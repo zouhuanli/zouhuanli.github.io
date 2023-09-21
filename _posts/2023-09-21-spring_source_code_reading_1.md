@@ -72,7 +72,7 @@ author: zouhuanli
     spring-jcl:JCL日志模块。
     spring-test:提供单元测试支持，如Junit。
 
-<h1>三、Spring学习材料<h1>
+<h1>三、Spring学习材料</h1>
 
     有非常非常多学习Spring的书籍、文章、视频，笔者建议先把官网文档学习和研究一遍。地址如下：
     SpringFramework文档：https://spring.io/projects/spring-framework
@@ -81,7 +81,7 @@ author: zouhuanli
     以及归档文件：https://docs.spring.io/spring-framework/docs/
     可以下载离线文档。以及Spring官方的GitHub的源码地址：https://github.com/spring-projects/spring-framework.git.
 
-<h1>四、参考材料<h1>
+<h1>四、参考材料</h1>
 
     1.Spring官方文档：https://spring.io/projects/spring-framework    <br>
     2.《spring源码深度解析》(郝佳)    <br>
