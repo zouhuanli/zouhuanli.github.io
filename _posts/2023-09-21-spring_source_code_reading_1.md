@@ -20,8 +20,8 @@ Spring早期就是为了简化JavaEE开发而出现，作为轻量级的JavaWEB�
 版本为6.0.0，jdk版本为jdk17，阅读工具为"IntelliJ IDEA 2023.2.2 (UltimateEdition)"。不同版本的Spring源码
 会有不同，但是其核心设计思想和核心源码整体是相同，不会有太多的差异。环境需要注意一点就是笔者使用了"Tomcat 10.1.11"，
 因此servlet的命名空间要由javax更新为jakarta。<br>
-Spring源码地址为：https://github.com/spring-projects/spring-framework.git.<br>
-笔者演示用源码地址为：https://github.com/zouhuanli/SpringMvcDemo.git.<br>
+Spring源码地址为：[https://github.com/spring-projects/spring-framework.git](https://github.com/spring-projects/spring-framework.git).<br>
+笔者演示用源码地址为：[https://github.com/zouhuanli/SpringMvcDemo.git](https://github.com/zouhuanli/SpringMvcDemo.git).<br>
 
 # 二、Spring组件总览
 
@@ -80,14 +80,14 @@ spring-test:提供单元测试支持，如Junit。
 # 三、Spring学习材料
 
 有非常非常多学习Spring的书籍、文章、视频，笔者建议先把官网文档学习和研究一遍。地址如下：
-SpringFramework文档：https://spring.io/projects/spring-framework
+SpringFramework文档：[https://spring.io/projects/spring-framework](https://spring.io/projects/spring-framework)
 
 ![springdoc](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-21-spring_source_code_reading_1/springdoc.png)
 
-以及归档文件：https://docs.spring.io/spring-framework/docs/
-可以下载离线文档。以及Spring官方的GitHub的源码地址：https://github.com/spring-projects/spring-framework.git.
+以及归档文件：[https://docs.spring.io/spring-framework/docs/](https://docs.spring.io/spring-framework/docs/)
+可以下载离线文档。以及Spring官方的GitHub的源码地址：[https://github.com/spring-projects/spring-framework.git](https://github.com/spring-projects/spring-framework.git).
 
 # 四、参考材料
 
-1.Spring官方文档：https://spring.io/projects/spring-framework    <br>
+1.Spring官方文档：[https://spring.io/projects/spring-framework](https://spring.io/projects/spring-framework)   <br>
 2.《spring源码深度解析》(郝佳)    <br>
