@@ -24,7 +24,7 @@ author: zouhuanli
         sigma.doSomething();
         }
      public void setSigma(Sigma sigma) {
-    this.sigma = sigma;
+        this.sigma = sigma;
     }
 
     public class Sigma {
@@ -37,7 +37,7 @@ author: zouhuanli
         }
     }
 
-我们要运行Beta的invokeSigmaMethod方法，必然需要实例话Sigma得到一个实例，如下：
+我们要运行Beta的invokeSigmaMethod方法，必然需要实例化Sigma得到一个实例，如下：
 
     Beta beta = new Beta();
     Sigma sigma = new Sigma();
@@ -56,12 +56,12 @@ IoC容器所实现的。
         private Sigma sigma;
 
         public void invokeSigmaMethod() {
-        sigma.doSomething();
+            sigma.doSomething();
         }
 
         @Autowired
         public void setSigma(Sigma sigma) {
-        this.sigma = sigma;
+             this.sigma = sigma;
         }
     }
 
@@ -83,7 +83,7 @@ IoC容器所实现的。
     public static void main(String[] args) {
         ClassPathXmlApplicationContext applicationContext = new ClassPathXmlApplicationContext("springmvc-context.xml");
         Beta beta = applicationContext.getBean(Beta.class);
-    beta.invokeSigmaMethod();
+        beta.invokeSigmaMethod();
     }
 
 我们看到我们根本没有手动创建Sigma对象，Spring容器自动创建了，并且Beta对象依赖的Sigma对象也已经设值了，已经注入了客户端依赖的对象。
@@ -132,7 +132,7 @@ Spring官网的图片：
      */
     @Bean(name = "myBetaBean")
     public Beta myBetaBean(@Autowired Sigma sigma) {
-        return new Beta(sigma);
+            return new Beta(sigma);
         }
     }
 
@@ -149,7 +149,7 @@ Spring官网的图片：
      * an empty method
      */
     public void doSomething() {
-        System.out.println("Sigma.doSomething()");
+            System.out.println("Sigma.doSomething()");
         }
     }
 
@@ -165,7 +165,7 @@ Spring官网的图片：
 
     <bean name="beta" class="com.homura.bean.Beta">
         <constructor-arg  index="0" ref="sigma"/>
-        </bean>
+    </bean>
 
 ## 2.setter注入
 
