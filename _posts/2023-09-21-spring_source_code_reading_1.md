@@ -26,7 +26,7 @@ author: zouhuanli
 # 二、Spring组件总览
 
     首先看下Spring官网的组件构成图：
-[![Spring-overview]](https://github.com/zouhuanli/zouhuanli.github.io/blob/master/images/2023-09-21-spring_source_code_reading_1/spring-overview.png)
+[![Spring-overview]](../images/2023-09-21-spring_source_code_reading_1/spring-overview.png)
 
     可以看到主要分为核心容器(IoC)、AOP、WEB、数据访问/集成(消息、事务、数据库)、TEST(测试集成)和其他等模块。
 
@@ -40,7 +40,7 @@ author: zouhuanli
     spring-context:在core和beans之上，拓展了BeanFactory，提供了资源绑定、国际化、容器生命周期、事件发布等功能。<br>
     ApplicationContext，应用上下文是其中的核心类。ApplicationContext一般也是客户端启动Spring容器的类，客户端 <br>
     不会直接操纵BeanFactory。
-[![spring-core和spring-beans]](https://github.com/zouhuanli/zouhuanli.github.io/blob/master/images/2023-09-21-spring_source_code_reading_1/core_and_beans.png)
+[![spring-core和spring-beans]](../images/2023-09-21-spring_source_code_reading_1/core_and_beans.png)
     
     spring-expression：提供spring表达式。
 
@@ -60,7 +60,7 @@ author: zouhuanli
     spring-webmvc:Spring MVC Web框架。
     spring-webflux：响应式异步非阻塞的Web框架。
     portlet模块已经移除。
-[![spring-web]](https://github.com/zouhuanli/zouhuanli.github.io/blob/master/images/2023-09-21-spring_source_code_reading_1/web.png)
+[![spring-web]](../images/2023-09-21-spring_source_code_reading_1/web.png)
 ## 4.AOP
 
     spring-aop:提供AOP支持，AOP通常使用在日志、权限、性能、监控等与业务代码横切的场景中，避免与业务代码耦合。
@@ -77,7 +77,7 @@ author: zouhuanli
 
     有非常非常多学习Spring的书籍、文章、视频，笔者建议先把官网文档学习和研究一遍。地址如下：
     SpringFramework文档：https://spring.io/projects/spring-framework
-[![springdoc]](https://github.com/zouhuanli/zouhuanli.github.io/blob/master/images/2023-09-21-spring_source_code_reading_1/springdoc.png)
+[![springdoc]](../images/2023-09-21-spring_source_code_reading_1/springdoc.png)
     
     以及归档文件：https://docs.spring.io/spring-framework/docs/
     可以下载离线文档。以及Spring官方的GitHub的源码地址：https://github.com/spring-projects/spring-framework.git.
