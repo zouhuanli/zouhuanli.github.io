@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Spring源码阅读二:Spring IoC基础"
-date: 2023-09-22
+date: 2023-09-21
 tags: [ spring ]
 comments: true
 author: zouhuanli
@@ -12,9 +12,7 @@ author: zouhuanli
 # 一、如何理解IoC或DI
 
 我们知道一个Bean也就是Spring IoC容器托管的一个实例，bean是对象，class信息或者注解配置或者xml配置是生成bean的定义(define)
-信息，有一种类似
-"元信息"的味道。那么如何理解IoC(控制反转)或DI(依赖注入)呢？
-我们考察一种最简单的情况,如下：
+信息，有一种类似"元信息"的味道。那么如何理解IoC(控制反转)或DI(依赖注入)呢？ 我们考察一种最简单的情况,如下：
 假设我有类Beta，依赖类Sigma。
 
     public class Beta {
