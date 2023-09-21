@@ -93,6 +93,7 @@ IoC控制反转是避免开发者手动创建依赖对象和维护依赖关系�
 
 参考下图和这篇文章:
 《Inversion of Control Containers and the Dependency Injection pattern》：[https://www.martinfowler.com/articles/injection.html]
+
 Spring官网的图片：
 ![container](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-22-spring_source_code_reading_2/container-magic.png)
 
