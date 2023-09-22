@@ -198,5 +198,5 @@ ApplicationContext的简单使用，定义好Bean信息（XML或/和注解），
 
 # 四、参考材料
 
-1.Spring源码(版本6.0.11)
+1.Spring源码(版本6.0.11)<br>
 2.《spring源码深度解析》(郝佳)    <br>
