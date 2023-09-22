@@ -185,7 +185,8 @@ GenericApplicationContext：不刷新配置的上下文，主要是基于注册�
 再往下看，又按照配置的加载源来分：如从XML文件加载则是XML名字的，注解的则是注解的，groovy的则是groovy的ApplicationContext。
 然后按应用类型可以分为简单ApplicationContext和WebApplicationContext。
 限于篇幅，ClassPathXmlApplicationContext和AnnotationConfigApplicationContext是本系列的研究重点的类型。
-ApplicationContext的简单使用，定义好Bean信息（XML或/和注解），然后初始化容器，使用ApplicationContext。如：
+
+ApplicationContext的简单使用如下，定义好Bean信息（XML或/和注解），然后初始化容器，使用ApplicationContext。如：
 
     public static void main(String[] args) {
             ClassPathXmlApplicationContext applicationContext = new ClassPathXmlApplicationContext("springmvc-context.xml");
