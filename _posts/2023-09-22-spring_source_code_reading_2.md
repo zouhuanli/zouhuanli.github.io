@@ -202,15 +202,14 @@ autowired注解可以修饰字段，构造器参数，setter方法。autowired�
 ## 2.同名Bean的覆盖问题
 
 Component扫描的bean的name默认是类名字首字母小写，如果你有同名类，或者xml注册同样name的bean，那么后面扫描/注册的beanDefinition会覆盖前者
-的，对应创建的singletonObject也会使用后置的。其源码位置为：
+的，对应创建的singletonObject也会使用后者的。其源码位置为：
 ![container](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-22-spring_source_code_reading_2/beanDefinitionOverriding.png)
 
 ## 3.@Autowired和@Resource以及@Inject
 
 @Autowired是spring的注解,作用于ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD, Elem
-entType.ANNOTATION_TYPE。
-默认注入是byType的，可以搭配@Qualifier指定bean的name,可以搭配@Primary指定首选的依赖对象。
-@Resource是javax定义的注解，可以作用于ElementType.TYPE, ElementType.FIELD, ElementType.METHOD。其默认按name注入依赖对象。
+entType.ANNOTATION_TYPE。默认注入是byType的，可以搭配@Qualifier指定bean的name,可以搭配@Primary指定首选的依赖对象。<br>
+@Resource是javax定义的注解，可以作用于ElementType.TYPE, ElementType.FIELD, ElementType.METHOD。其默认按name注入依赖对象。<br>
 @Inject是javax.inject引入的，作用于ElementType.CONSTRUCTOR、ElementType.METHOD、ElementType.FIELD，用法@Autowired基本一致，可以
 搭配@Named来注入指定name的依赖对象。
 
