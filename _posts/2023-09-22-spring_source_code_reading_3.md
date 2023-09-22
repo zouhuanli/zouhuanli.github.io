@@ -32,8 +32,7 @@ ApplicationContext拓展了BeanFactory并添加了更多企业级的功能，如
 # 一、BeanFactory和BeanRegistry
 
 BeanFactory是Spring IoC容器最核心的类，顾名思义BeanFactory是使用工厂模式创建的用于创建、管理、销毁Bean的工厂。创建Bean需要读取定义
-Bean的配置，如读取xml的<bean>标签配置的bean，或者使用@Component等注解定义的Bean，因此BeanFactory还应存储Bean定义信息BeanDefinit
-ion。
+Bean的配置，如读取xml的&lt;bean>标签配置的bean，或者使用@Component等注解定义的Bean，因此BeanFactory还应存储Bean定义信息BeanDefinition。
 
 为什么不直接跳过存储和管理BeanDefinition直接创建bean实例？笔者的理解是：首先，BeanDefinition是一种元信息，每次创建Bean都要读取其从而创建Bean
 ,自然需要保存：其次，Spring容器不是只有单例，也不是启动/刷新容器才创建Bean，所以需要保存BeanDefinition供创建Bean时候使用。
@@ -71,8 +70,7 @@ DefaultListableBeanFactory是AbstractAutowireCapableBeanFactory的具体实现�
 为什么选择DefaultListableBeanFactory？因为ApplicationContext持有的BeanFactory对象就是DefaultListableBeanFactory类型的。
 现在我们关注到三个顶层的接口BeanFactory，BeanDefinitionRegistry，SingletonBeanRegistry。
 BeanFactory是容器的基本功能，主要提供注册Bean、管理Bean、获取Bean和销毁Bean等和Bean对象相关的功能。
-BeanDefinitionRegistry是Bean定义信息的注册中心， 指的是将<bean>
-标签、@Component、@ComponentScan等注解定义的类信息存储，以供BeanFactory创建Bean使用。
+BeanDefinitionRegistry是Bean定义信息的注册中心， 指的是将&lt;bean>标签、@Component、@ComponentScan等注解定义的类信息存储，以供BeanFactory创建Bean使用。
 
 	/** Map of bean definition objects, keyed by bean name. */
 	private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(256);
@@ -95,8 +93,7 @@ SingletonBeanRegistry则很好理解了，单例的注册中心，DefaultSinglet
 	/** Set of registered singletons, containing the bean names in registration order. */
 	private final Set<String> registeredSingletons = new LinkedHashSet<>(256);
 
-这里使用了三级缓存singletonObjects，singletonFactories，earlySingletonObjects，其中singletonObjects是最终完全容器创建好之后的单例
-注册中心。
+这里使用了三级缓存singletonObjects，singletonFactories，earlySingletonObjects，其中singletonObjects是最终完全容器创建好之后的单例注册中心。
 为什么只注册单例？Spring默认只托管单例的生命周期，原型和scope的是创建好了就交给客户端类使用了，根本不保存到singletonObjects。
 
 # 二、BeanDefinition
