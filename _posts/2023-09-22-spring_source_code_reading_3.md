@@ -33,7 +33,9 @@ ApplicationContext拓展了BeanFactory并添加了更多企业级的功能，如
 
 BeanFactory是Spring IoC容器最核心的类，顾名思义BeanFactory是使用工厂模式创建的用于创建、管理、销毁Bean的工厂。创建Bean需要读取定义
 Bean的配置，如读取xml的<bean>标签配置的bean，或者使用@Component等注解定义的Bean，因此BeanFactory还应存储Bean定义信息BeanDefinit
-ion。为什么不直接跳过存储和管理BeanDefinition直接创建bean实例？笔者的理解是：首先，BeanDefinition是一种元信息，每次创建Bean都要读取其从而创建Bean
+ion。
+
+为什么不直接跳过存储和管理BeanDefinition直接创建bean实例？笔者的理解是：首先，BeanDefinition是一种元信息，每次创建Bean都要读取其从而创建Bean
 ,自然需要保存：其次，Spring容器不是只有单例，也不是启动/刷新容器才创建Bean，所以需要保存BeanDefinition供创建Bean时候使用。
 先看下BeanFactory的类关系图，来自IDEA自带的。如下：
 
@@ -47,13 +49,25 @@ BeanFactory顶层接口如下：
 
 可以看出主要从容器获取Bean、判断Bean是否存在、获取Bean的类型和别名、Bean是否是单例等方法。
 从上面的类关系图可以看到,BeanFactory的子接口有:
+
 ListableBeanFactory:在BeanFatory增加了Bean定义信息的计数，获取类型的BeanName列表等可迭代获取容器里面的Bean的信息。
+
 HierarchicalBeanFactory：主要设置父容器，以及判断从当前容器而不是父容器判断Bean是否存在。
+
 ConfigurableBeanFactory：可参数化/配置的容器,可以设置类加载器、属性编辑器、BeanPostProcessor(bean后置处理器)、销毁Bean等。
+
 AutowireCapableBeanFactory：提供自动注入/装配的容器。
+
 ConfigurableListableBeanFactory：ListableBeanFactory和ConfigurableBeanFactory的组合。
+
 可以看到越底层的接口功能越细化，不断拓展BeanFactory的功能，这也是使用继承的目的。
 BeanFactory的抽象类层次是：AbstractBeanFactory ---> AbstractAutowireCapableBeanFactory --->DefaultListableBeanFactory。
+
+以下是GitHub Copilot自动生成的文字,确实在AIGC领域有所用处：
+"AbstractBeanFactory是BeanFactory的抽象实现类，主要实现了BeanFactory的基本功能，如获取Bean、判断Bean是否存在、获取Bean的类型和别名。
+AbstractAutowireCapableBeanFactory是AbstractBeanFactory的抽象实现类，主要实现了自动注入/装配的功能。
+DefaultListableBeanFactory是AbstractAutowireCapableBeanFactory的具体实现类，主要实现了Bean定义信息的注册、存储、获取等功能。"
+
 为什么选择DefaultListableBeanFactory？因为ApplicationContext持有的BeanFactory对象就是DefaultListableBeanFactory类型的。
 现在我们关注到三个顶层的接口BeanFactory，BeanDefinitionRegistry，SingletonBeanRegistry。
 BeanFactory是容器的基本功能，主要提供注册Bean、管理Bean、获取Bean和销毁Bean等和Bean对象相关的功能。
@@ -168,9 +182,9 @@ ApplicationContext上层的类型/接口如下,
 
 ![ClassPathXmlApplicationContext](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-22-spring_source_code_reading_3/ClassPathXmlApplicationContext.png)
 
-从图中我们看到ApplicationContext的具体实现类还是非常多的，不妨自顶向下做一个总的划分。
-AbstractRefreshableApplicationContext：可以刷新配置的上下文，如XML配置的。
-GenericApplicationContext：不刷新配置的上下文，主要是基于注册配置的。
+从图中我们看到ApplicationContext的具体实现类还是非常多的，不妨自顶向下做一个总的划分。<br>
+AbstractRefreshableApplicationContext：可以刷新配置的上下文，如XML配置的。<br>
+GenericApplicationContext：不刷新配置的上下文，主要是基于注册配置的。<br>
 再往下看，又按照配置的加载源来分：如从XML文件加载则是XML名字的，注解的则是注解的，groovy的则是groovy的ApplicationContext。
 然后按应用类型可以分为简单ApplicationContext和WebApplicationContext。
 限于篇幅，ClassPathXmlApplicationContext和AnnotationConfigApplicationContext是本系列的研究重点的类型。
