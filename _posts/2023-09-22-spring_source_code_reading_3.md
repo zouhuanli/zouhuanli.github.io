@@ -13,6 +13,7 @@ author: zouhuanli
 ApplicationContext adds more enterprise-specific functionality"。BeanFactory提供了Spring Ioc的配置获取和基本功能，
 ApplicationContext拓展了BeanFactory并添加了更多企业级的功能，如资源获取、事件发布、国际化等。ApplicationContext也是客户端创建、
 启动、使用容器的基本对象。
+
 如何阅读源码？阅读源码其实一种非常枯燥的工作，而且很容易沉迷细节从而只见树木不见森林。而且现在成熟框架的源码随着各种更新，代码量已经非常
 大了，不可能全部看完。下面分享一下笔者的阅读思路：
 
