@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Spring源码阅读四:Spring IoC容器初始化流程"
-date: 2023-09-23
+date: 2023-09-24
 tags: [ spring ]
 comments: true
 author: zouhuanli
@@ -515,10 +515,38 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
 ```
 至此，一个&lt;bean>元素解析为BeanDefinition对象并注册到BeanFactory的流程完成了。可以看到整体流程还是偏流畅清晰的，没有太多的分支，代码复杂
 度不算高。Spring源码对整个流程提供个多个抽象对象，互相组合使用。
-下面从笔者的debug流程简单看一下BeanDefinitionHolder，和beanDefinitionMap：
+下面从笔者的debug流程简单看一下BeanDefinitionHolder，和beanDefinitionMap的信息：
 
+![bdHolder](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_4/bdHolder.png)
 
+所有的beanDefinition都存入beanDefinitionMap：
 
+![beanDefinitionMap](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_4/beanDefinitionMap.png)
+
+至此，BeanFactory已经创建完成了，可以交给ApplicationContext使用了。下面做一下整体流程的总结。
+# 三、整体流程的总结
+## 1.refresh方法
+refresh方法的主流程如下，作图国际为SequenceDigaram：
+![AbstractApplicationContext_refresh](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_4/AbstractApplicationContext_refresh.png)
+
+## 2.BeanFactory创建流程 
+BeanFactory创建的主要流程如下：
+1.AbstractRefreshableApplicationContext.refreshBeanFactory()，入口。
+2.AbstractXmlApplicationContext.loadBeanDefinitions(DefaultListableBeanFactory beanFactory)，加载BeanDefinition入口。
+3.创建XmlBeanDefinitionReader，配置Reader。
+4.AbstractBeanDefinitionReader.loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources)和XmlBeanDefinitionReader.loadBeanDefinitions(EncodedResource encodedResource)读取bean配置，
+主流程的流转，还不是具体读取的流程。
+5.XmlBeanDefinitionReader.doLoadBeanDefinitions(InputSource inputSource, Resource resource),真正的读取BeanDefinition的方法。
+6.BeanDefinitionDocumentReader的registerBeanDefinitions方法，5已经解析XML为Document对象了，现在从其中读取Bean信息。
+7.BeanDefinitionDocumentReader的doRegisterBeanDefinitions方法,真正的读取方法，看到do开头的就是真正干活的方法了，不是主流程的流转。
+8.BeanDefinitionDocumentReader的parseDefaultElement解析默认的配置元素，BeanDefinitionParserDelegate解析定制化的元素。
+9.BeanDefinitionDocumentReader的processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate)方法，读取元素为BeanDefinition并包装为
+BeanDefinitionHolder，然后注册到BeanDefinitionRegistry，然后发布bean信息注册完成事件。
+10.IoC容器beanFactory创建和初始化完成，交由ApplicationContext使用。
+
+这里主要关注AbstractXmlApplicationContext、XmlBeanDefinitionReader、BeanDefinitionDocumentReader、DefaultListableBeanFactory对Bean配置元素的处理流程，
+着重理解通过步步流转Bean配置会被解析为一个beanDefinition对象 然后注册到beanDefinitionMap这个核心原理。
+BeanFactory创建之后的ApplicationContext的流程笔者将在后续文章进行一些解读。
 # 四、参考材料
 
 1.Spring源码(版本6.0.11)<br>
