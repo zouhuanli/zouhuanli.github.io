@@ -535,11 +535,11 @@ BeanFactory创建的主要流程如下：<br>
 2.**AbstractXmlApplicationContext**.loadBeanDefinitions(DefaultListableBeanFactory beanFactory)，加载BeanDefinition入口。<br>
 3.**创建XmlBeanDefinitionReader**，配置Reader。<br>
 4.**AbstractBeanDefinitionReader**.loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources)和XmlBeanDefinitionReader.loadBeanDefinitions(EncodedResource encodedResource)读取bean配置。这里还是主流程的流转，还不是具体读取的流程。<br>
-5.<em>XmlBeanDefinitionReader</em>.doLoadBeanDefinitions(InputSource inputSource, Resource resource),真正的读取BeanDefinition的方法。<br>
-6.<em>BeanDefinitionDocumentReader</em>的registerBeanDefinitions方法，5已经解析XML为Document对象了，现在从其中读取Bean信息。<br>
-7.<em>BeanDefinitionDocumentReader</em>的doRegisterBeanDefinitions方法,真正的读取方法，看到do开头的就是真正干活的方法了，不是主流程的流转。<br>
-8.<em>BeanDefinitionDocumentReader</em>的parseDefaultElement解析默认的配置元素，BeanDefinitionParserDelegate解析定制化的元素。<br>
-9.<em>BeanDefinitionDocumentReader</em>的processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate)方法，读取元素为BeanDefinition并包装为BeanDefinitionHolder，然后注册到BeanDefinitionRegistry，然后发布bean信息注册完成事件。<br>
+5.<strong>XmlBeanDefinitionReader</strong>.doLoadBeanDefinitions(InputSource inputSource, Resource resource),真正的读取BeanDefinition的方法。<br>
+6.<strong>BeanDefinitionDocumentReader</strong>的registerBeanDefinitions方法，5已经解析XML为Document对象了，现在从其中读取Bean信息。<br>
+7.<strong>BeanDefinitionDocumentReader</strong>的doRegisterBeanDefinitions方法,真正的读取方法，看到do开头的就是真正干活的方法了，不是主流程的流转。<br>
+8.<strong>BeanDefinitionDocumentReader</strong>的parseDefaultElement解析默认的配置元素，BeanDefinitionParserDelegate解析定制化的元素。<br>
+9.<strong>BeanDefinitionDocumentReader</strong>的processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate)方法，读取元素为BeanDefinition并包装为BeanDefinitionHolder，然后注册到BeanDefinitionRegistry，然后发布bean信息注册完成事件。<br>
 10.IoC容器beanFactory创建和初始化完成，交由ApplicationContext使用。<br>
 
 这里主要关注**AbstractXmlApplicationContext、XmlBeanDefinitionReader、BeanDefinitionDocumentReader、DefaultListableBeanFactory**对Bean配置元素的处理流程，<br>
