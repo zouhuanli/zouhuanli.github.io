@@ -531,21 +531,21 @@ refresh方法的主流程如下，作图工具为SequenceDigaram：
 
 ## 2.BeanFactory创建流程 
 BeanFactory创建的主要流程如下：<br>
-1.AbstractRefreshableApplicationContext.refreshBeanFactory()，入口。<br>
-2.AbstractXmlApplicationContext.loadBeanDefinitions(DefaultListableBeanFactory beanFactory)，加载BeanDefinition入口。<br>
-3.创建XmlBeanDefinitionReader，配置Reader。<br>
-4.AbstractBeanDefinitionReader.loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources)和XmlBeanDefinitionReader.loadBeanDefinitions(EncodedResource encodedResource)读取bean配置，
+1.**AbstractRefreshableApplicationContext**.refreshBeanFactory()，入口。<br>
+2.**AbstractXmlApplicationContext**.loadBeanDefinitions(DefaultListableBeanFactory beanFactory)，加载BeanDefinition入口。<br>
+3.**创建XmlBeanDefinitionReader**，配置Reader。<br>
+4.**AbstractBeanDefinitionReader**.loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources)和XmlBeanDefinitionReader.loadBeanDefinitions(EncodedResource encodedResource)读取bean配置，
 主流程的流转，还不是具体读取的流程。<br>
-5.XmlBeanDefinitionReader.doLoadBeanDefinitions(InputSource inputSource, Resource resource),真正的读取BeanDefinition的方法。<br>
-6.BeanDefinitionDocumentReader的registerBeanDefinitions方法，5已经解析XML为Document对象了，现在从其中读取Bean信息。<br>
-7.BeanDefinitionDocumentReader的doRegisterBeanDefinitions方法,真正的读取方法，看到do开头的就是真正干活的方法了，不是主流程的流转。<br>
-8.BeanDefinitionDocumentReader的parseDefaultElement解析默认的配置元素，BeanDefinitionParserDelegate解析定制化的元素。<br>
-9.BeanDefinitionDocumentReader的processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate)方法，读取元素为BeanDefinition并包装为
+5.**XmlBeanDefinitionReader**.doLoadBeanDefinitions(InputSource inputSource, Resource resource),真正的读取BeanDefinition的方法。<br>
+6.**BeanDefinitionDocumentReader**的registerBeanDefinitions方法，5已经解析XML为Document对象了，现在从其中读取Bean信息。<br>
+7.**BeanDefinitionDocumentReader**的doRegisterBeanDefinitions方法,真正的读取方法，看到do开头的就是真正干活的方法了，不是主流程的流转。<br>
+8.**BeanDefinitionDocumentReader**的parseDefaultElement解析默认的配置元素，BeanDefinitionParserDelegate解析定制化的元素。<br>
+9.**BeanDefinitionDocumentReader**的processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate)方法，读取元素为BeanDefinition并包装为
 BeanDefinitionHolder，然后注册到BeanDefinitionRegistry，然后发布bean信息注册完成事件。<br>
 10.IoC容器beanFactory创建和初始化完成，交由ApplicationContext使用。<br>
 
-这里主要关注AbstractXmlApplicationContext、XmlBeanDefinitionReader、BeanDefinitionDocumentReader、DefaultListableBeanFactory对Bean配置元素的处理流程，<br>
-着重理解通过步步流转Bean配置会被解析为一个beanDefinition对象 然后注册到beanDefinitionMap这个核心原理。<br>
+这里主要关注**AbstractXmlApplicationContext、XmlBeanDefinitionReader、BeanDefinitionDocumentReader、DefaultListableBeanFactory**对Bean配置元素的处理流程，<br>
+着重理解通过步步流转**Bean配置会被解析为一个beanDefinition对象 然后注册到beanDefinitionMap**这个核心原理。<br>
 BeanFactory创建之后的ApplicationContext的流程笔者将在后续文章进行一些解读。
 # 四、参考材料
 
