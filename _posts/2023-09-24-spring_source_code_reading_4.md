@@ -40,11 +40,11 @@ public ClassPathXmlApplicationContext(
 		}
 	}
 ```
-这里设置了父容器和configLocations配置路径。前一篇文章ClassPathXmlApplicationContext继承自AbstractRefreshableConfigApplicationContext，refresh为true,我们看到现在我们看refresh方法。
+这里设置了父容器和configLocations配置路径。前一篇文章ClassPathXmlApplicationContext继承自AbstractRefreshableConfigApplicationContext，refresh为true,现在我们从refresh方法入口看起。
 
 # 二、refresh方法
 refresh是销毁旧容器，刷新容器配置，启动新容器，并发布容器事件的核心方法。读懂refresh方法就读懂了IoC容器的初始化流程了。
-我们看到具体代码,这里有删减，忽略了异常、部分分支代码，只看主要代码：
+我们看下代码,这里有删减，忽略了异常、日志、部分分支代码，只看主要代码：
 ```java
 public void refresh() throws BeansException, IllegalStateException {
         StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
@@ -233,7 +233,7 @@ public int loadBeanDefinitions(EncodedResource encodedResource) {
 	
 }
 ```
-最好来到了doLoadBeanDefinitions方法，看名字这个方法应该就是真正读取和注册Bean定义信息的方法了。
+最后来到了doLoadBeanDefinitions方法，看名字这个方法应该就是真正读取和注册Bean定义信息的方法了。
 我们继续阅读doLoadBeanDefinitions方法：
 ```java
 protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
@@ -244,7 +244,7 @@ protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
 	}
 
 ```
-这里就两个步骤，配置资源转换为XML的Document，如何从Document对象读取元素，解析为BeanDefinition，注册到BeanFactory里面。
+这里就两个步骤，配置资源转换为XML的Document，以及从Document对象读取配置元素，解析为BeanDefinition，注册到BeanFactory里面。
 doLoadDocument方法就不看了，继续跟踪registerBeanDefinitions方法：
 ```java
 public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
@@ -255,7 +255,7 @@ public int registerBeanDefinitions(Document doc, Resource resource) throws BeanD
 	}
 ```
 我们继续跟踪registerBeanDefinitions(Document doc, XmlReaderContext readerContext)方法，来到DefaultBeanDefinitionDocumentReader.doRegisterBeanDefinitions(Element root)方法，
-这个方法以Do开头，看样子是真正干活的了。
+这个方法以Do开头，看来是真正干活的代码了。
 ```java
 protected void doRegisterBeanDefinitions(Element root) {
 	// Any nested <beans> elements will cause recursion in this method. In
@@ -291,7 +291,7 @@ protected void doRegisterBeanDefinitions(Element root) {
 	this.delegate = parent;
 }
 ```
-看代码，读取Bean配置转交给了委派对象BeanDefinitionParserDelegate，我们继续向前：
+看代码，读取Bean配置应该是转交给了委派对象BeanDefinitionParserDelegate，我们继续向前：
 ```java
 protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
 		if (delegate.isDefaultNamespace(root)) {
@@ -331,8 +331,7 @@ private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate deleg
 		}
 	}
 ```
-好，现在终于看到&lt;bean>标签了。这里默认有四个标签import，alias，bean，beans。读取import就是前面的AbstractBeanDefinitionReader.lo
-adBeanDefinitions(String location, @Nullable Set<Resource> actualResources)方法，nest是递归读取，这些不再解读了。注册alias别名是
+好，现在终于看到&lt;bean>标签了。这里默认有四个标签import，alias，bean，beans。读取import就是前面的AbstractBeanDefinitionReader.loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources)方法，nest是递归读取，这些不再解读了。注册alias别名是
 最终到达了：	"this.aliasMap.put(alias, name);"，这里注册了bean的别名列表。
 现在主要看下processBeanDefinition这个方法：
 ```java
@@ -340,7 +339,7 @@ protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate d
     //从delegate读取BeanDefinition，并包装为修饰类
 	BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
 	if (bdHolder != null) {
-        //进行一修饰动作
+        //进行一些修饰动作
 		bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
         //注册到BeanDefinitionRegistry/DefaultListableBeanFactory中
 			// Register the final decorated instance.
@@ -433,7 +432,7 @@ public AbstractBeanDefinition parseBeanDefinitionElement(
         return null;
         }
 ```
-这里读取Bean元素的各项属性，不再细化展开了。
+这里读取Bean元素的各项属性，不再细化展开了。<br>
 说明一下：笔者这个系列的文章会对源码做一些删减，主要去掉非主要执行分支、异常、日志等处理，尽量关注于主要核心流程和核心代码。
 现在一个bean元素转换为BeanDefinition对象了，接下来就是注入到容器里面去了。
 我们转到这行代码：
@@ -460,7 +459,8 @@ public static void registerBeanDefinition(
 	}
 
 ```
-这里注册了BeanDefinition自身和别名。注册BeanDefinition主要是存入beanDefinitionMap中，代码如下（有删减）：
+这里注册了BeanDefinition自身和别名。<br>
+注册BeanDefinition主要是存入beanDefinitionMap中，代码如下（有删减）：
 ```java
 
 @Override
@@ -470,7 +470,7 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
 	BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
 	if (existingDefinition != null) {
         //覆盖旧的配置，这里要特别注意一下，Spring注册的Bean默认是类型名字首字母小写，一个App出现相同类名注册为Spring的Bean的话，后者覆盖前者.
-        //后与前是看Spring加载XML配置和注解配置中，哪一个定义出现的先后
+        //后与前是看Spring加载XML配置和注解的所有同名的配置中，哪一个定义出现的先后
 		else if (!beanDefinition.equals(existingDefinition)) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Overriding bean definition for bean '" + beanName +
@@ -513,9 +513,9 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
 
 }
 ```
-至此，一个&lt;bean>元素解析为BeanDefinition对象并注册到BeanFactory的流程完成了。可以看到整体流程还是偏流畅清晰的，没有太多的分支，代码复杂
-度不算高。Spring源码对整个流程提供个多个抽象对象，互相组合使用。
-下面从笔者的debug流程简单看一下BeanDefinitionHolder，和beanDefinitionMap的信息：
+至此，一个&lt;bean>元素解析为BeanDefinition对象并注册到BeanFactory的流程完成了。<br>可以看到整体流程还是偏流畅清晰的，没有太多的分支，代码复杂
+度不算高。Spring源码对整个流程提供个多个抽象对象，互相组合使用。<br>
+下面从笔者自己的debug流程简单看一下BeanDefinitionHolder，和beanDefinitionMap的信息：
 
 ![bdHolder](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_4/bdHolder.png)
 
@@ -523,31 +523,31 @@ public void registerBeanDefinition(String beanName, BeanDefinition beanDefinitio
 
 ![beanDefinitionMap](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_4/beanDefinitionMap.png)
 
-至此，BeanFactory已经创建完成了，可以交给ApplicationContext使用了。下面做一下整体流程的总结。
+到这里，BeanFactory已经创建完成了，可以交给ApplicationContext使用了。下面做一下整体流程的总结。
 # 三、整体流程的总结
 ## 1.refresh方法
-refresh方法的主流程如下，作图国际为SequenceDigaram：
+refresh方法的主流程如下，作图工具为SequenceDigaram：
 ![AbstractApplicationContext_refresh](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_4/AbstractApplicationContext_refresh.png)
 
 ## 2.BeanFactory创建流程 
-BeanFactory创建的主要流程如下：
-1.AbstractRefreshableApplicationContext.refreshBeanFactory()，入口。
-2.AbstractXmlApplicationContext.loadBeanDefinitions(DefaultListableBeanFactory beanFactory)，加载BeanDefinition入口。
-3.创建XmlBeanDefinitionReader，配置Reader。
+BeanFactory创建的主要流程如下：<br>
+1.AbstractRefreshableApplicationContext.refreshBeanFactory()，入口。<br>
+2.AbstractXmlApplicationContext.loadBeanDefinitions(DefaultListableBeanFactory beanFactory)，加载BeanDefinition入口。<br>
+3.创建XmlBeanDefinitionReader，配置Reader。<br>
 4.AbstractBeanDefinitionReader.loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources)和XmlBeanDefinitionReader.loadBeanDefinitions(EncodedResource encodedResource)读取bean配置，
-主流程的流转，还不是具体读取的流程。
-5.XmlBeanDefinitionReader.doLoadBeanDefinitions(InputSource inputSource, Resource resource),真正的读取BeanDefinition的方法。
-6.BeanDefinitionDocumentReader的registerBeanDefinitions方法，5已经解析XML为Document对象了，现在从其中读取Bean信息。
-7.BeanDefinitionDocumentReader的doRegisterBeanDefinitions方法,真正的读取方法，看到do开头的就是真正干活的方法了，不是主流程的流转。
-8.BeanDefinitionDocumentReader的parseDefaultElement解析默认的配置元素，BeanDefinitionParserDelegate解析定制化的元素。
+主流程的流转，还不是具体读取的流程。<br>
+5.XmlBeanDefinitionReader.doLoadBeanDefinitions(InputSource inputSource, Resource resource),真正的读取BeanDefinition的方法。<br>
+6.BeanDefinitionDocumentReader的registerBeanDefinitions方法，5已经解析XML为Document对象了，现在从其中读取Bean信息。<br>
+7.BeanDefinitionDocumentReader的doRegisterBeanDefinitions方法,真正的读取方法，看到do开头的就是真正干活的方法了，不是主流程的流转。<br>
+8.BeanDefinitionDocumentReader的parseDefaultElement解析默认的配置元素，BeanDefinitionParserDelegate解析定制化的元素。<br>
 9.BeanDefinitionDocumentReader的processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate)方法，读取元素为BeanDefinition并包装为
-BeanDefinitionHolder，然后注册到BeanDefinitionRegistry，然后发布bean信息注册完成事件。
-10.IoC容器beanFactory创建和初始化完成，交由ApplicationContext使用。
+BeanDefinitionHolder，然后注册到BeanDefinitionRegistry，然后发布bean信息注册完成事件。<br>
+10.IoC容器beanFactory创建和初始化完成，交由ApplicationContext使用。<br>
 
-这里主要关注AbstractXmlApplicationContext、XmlBeanDefinitionReader、BeanDefinitionDocumentReader、DefaultListableBeanFactory对Bean配置元素的处理流程，
-着重理解通过步步流转Bean配置会被解析为一个beanDefinition对象 然后注册到beanDefinitionMap这个核心原理。
+这里主要关注AbstractXmlApplicationContext、XmlBeanDefinitionReader、BeanDefinitionDocumentReader、DefaultListableBeanFactory对Bean配置元素的处理流程，<br>
+着重理解通过步步流转Bean配置会被解析为一个beanDefinition对象 然后注册到beanDefinitionMap这个核心原理。<br>
 BeanFactory创建之后的ApplicationContext的流程笔者将在后续文章进行一些解读。
 # 四、参考材料
 
 1.Spring源码(版本6.0.11)<br>
-2.《spring源码深度解析》(郝佳)    <br>
+2.《spring源码深度解析》(郝佳)  <br>
