@@ -60,7 +60,7 @@ public AnnotationConfigApplicationContext(){
 这里设置了Bean配置的读取器和扫描器,扫描器主要是读取扫描路径下面注解配置的Bean配置。
 我们从register一路DEBUG最后进入BeanFactory的registerBeanDefinition方法，找到注册AppConfig这个配置类的配置，如下：
 
-![AnnotationAppConfig](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_5/AnnotationAppConfig.png)
+![AnnotationAppConfig](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-25-spring_source_code_reading_5/AnnotationAppConfig.png)
 
 我们看到不仅仅注册了AppConfig这个配置，还注册了四个内部的配置类。<br>
 下面我们开始阅读最主要的refresh方法。
@@ -169,7 +169,7 @@ private static void invokeBeanDefinitionRegistryPostProcessors(
 继续向前阅读，进入processConfigBeanDefinitions方法：
 我们看到作为配置类的Bean信息有这些个：
 
-![configCandidates](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_5/configCandidates.png)
+![configCandidates](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-25-spring_source_code_reading_5/configCandidates.png)
 
 我们继续调试后面的代码。
 
@@ -381,11 +381,11 @@ private Set<BeanDefinition> scanCandidateComponents(String basePackage){
 
 看下resources的value:
 
-![resources](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_5/resources.png)
+![resources](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-25-spring_source_code_reading_5/resources.png)
 
 然后我们看下这里解析处理的BeanDefinition的值；
 
-![ScannedGenericBeanDefinition](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-24-spring_source_code_reading_5/ScannedGenericBeanDefinition.png)
+![ScannedGenericBeanDefinition](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-25-spring_source_code_reading_5/ScannedGenericBeanDefinition.png)
 
 好了，到这里现在basePackage路径下面的所有注册配置的Bean配置都已经解析为BeanDefinition了并返回到外部。<br>
 后面就是registerBeanDefinition方法了注册到beanDefinitionMap，本篇不再赘述。
