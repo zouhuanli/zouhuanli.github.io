@@ -109,7 +109,7 @@ protected<T> T doGetBean(
         if(logger.isTraceEnabled()){
         if(isSingletonCurrentlyInCreation(beanName)){
         //注意这行日志,返回beanName的Bean实例，这个实例尚未初始化完成，以应对循环依赖的场景。
-        //也就是是这个三个缓存为解决循环依赖做了一些工作。
+        //也就是这三个缓存为解决循环依赖做了一些工作。
         logger.trace("Returning eagerly cached instance of singleton bean '"+beanName+
         "' that is not fully initialized yet - a consequence of a circular reference");
                 }
@@ -202,19 +202,19 @@ protected Object getSingleton(String beanName,boolean allowEarlyReference){
         // Quick check for existing instance without full singleton lock
         Object singletonObject=this.singletonObjects.get(beanName);
         if(singletonObject==null&&isSingletonCurrentlyInCreation(beanName)){
-        singletonObject=this.earlySingletonObjects.get(beanName);
+            singletonObject=this.earlySingletonObjects.get(beanName);
         if(singletonObject==null&&allowEarlyReference){
-synchronized (this.singletonObjects){
-        // Consistent creation of early reference within full singleton lock
-        singletonObject=this.singletonObjects.get(beanName);
-        if(singletonObject==null){
-        singletonObject=this.earlySingletonObjects.get(beanName);
-        if(singletonObject==null){
-        ObjectFactory<?> singletonFactory=this.singletonFactories.get(beanName);
-        if(singletonFactory!=null){
-        singletonObject=singletonFactory.getObject();
-        this.earlySingletonObjects.put(beanName,singletonObject);
-        this.singletonFactories.remove(beanName);
+            synchronized (this.singletonObjects){
+                // Consistent creation of early reference within full singleton lock
+                singletonObject=this.singletonObjects.get(beanName);
+                    if(singletonObject==null){
+                        singletonObject=this.earlySingletonObjects.get(beanName);
+                             if(singletonObject==null){
+                                ObjectFactory<?> singletonFactory=this.singletonFactories.get(beanName);
+                                        if(singletonFactory!=null){
+                                              singletonObject=singletonFactory.getObject();
+                                                this.earlySingletonObjects.put(beanName,singletonObject);
+                                                this.singletonFactories.remove(beanName);
                             }
                          }
                      }
@@ -231,9 +231,9 @@ singletonFactories的这个Bean实例，添加到earlySingletonObjects。这里�
 <br>
 
 总的来说，doGetBean这里大致分为三步:<br>
-1.从三级缓存获取。<b>
-2.从父容器获取。<b>
-3.从当前容器获取，按照scope的类型创建，默认XML配置和注册配置的Bean就是单例的，进入getSingleton方法创建单例。<b>
+1.从三级缓存获取。<br>
+2.从父容器获取。<br>
+3.从当前容器获取，按照scope的类型创建，默认XML配置和注册配置的Bean就是单例的，进入getSingleton方法创建单例。<br>
 4.对返回的bean实例做一些适配。
 ## 2.getSingleton
 我们继续进入getSingleton方法。我们先进入getSingleton方法，然后再读
