@@ -257,7 +257,7 @@ singletonFactories的这个Bean实例，添加到earlySingletonObjects。这里�
                         }
 ```
 
-这里的ctFactory<?> singletonFactory参数是一个ObjectFactory的函数式接口。
+这里的ObjectFactory<?> singletonFactory参数是一个ObjectFactory的函数式接口。
 
 getSingleton方法如下：
 
@@ -280,21 +280,21 @@ synchronized (this.singletonObjects){
         //不存在，开始创建新的单例
         if(singletonObject==null){
         //2.关注这行,加入beanName到singletonsCurrentlyInCreation这个Map
-        beforeSingletonCreation(beanName);
-        boolean newSingleton=false;
+          beforeSingletonCreation(beanName);
+            boolean newSingleton=false;
         try{
         //3.从ObjectFactory这个工厂类去创建单例，其只有一个getObject()方法，这个是一个工厂方法(factory-method).
         //这个类型类似于FactoryBean
-        singletonObject=singletonFactory.getObject();
-        newSingleton=true;
+         singletonObject=singletonFactory.getObject();
+            newSingleton=true;
             }
         finally{
         //4.从singletonsCurrentlyInCreation移除beanName
-        afterSingletonCreation(beanName);
+            afterSingletonCreation(beanName);
             }
         if(newSingleton){
         //5.注意此方法，singletonObjects存入创建的Bean实例，并从earlySingletonObjects、singletonFactories移除Bean实例
-        addSingleton(beanName,singletonObject);
+            addSingleton(beanName,singletonObject);
                  }
             }
         return singletonObject;
