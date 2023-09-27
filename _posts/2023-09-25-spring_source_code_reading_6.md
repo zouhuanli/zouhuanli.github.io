@@ -411,7 +411,7 @@ protected Object doCreateBean(String beanName, RootBeanDefinition mbd, @Nullable
 		//初始化过程
 		Object exposedObject = bean;
 		try {
-			//属性填充，依赖注入，这里可以注入@Autowired等当前单例bean实例所依赖的对象
+			//属性填充，依赖注入，这里可以注入@Autowired引入的，当前单例bean实例所依赖的对象
 			populateBean(beanName, mbd, instanceWrapper);
 			//初始化方法，如init-method，InitializingBean，@PostConstruct等
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
@@ -452,14 +452,14 @@ protected void addSingleton(String beanName, Object singletonObject) {
 		}
 	}
 ```
-这里将实例化并且完成初始化完成，可以交付给IoC容器的单例Bean使用并加入了singletonObjects集合（一级缓存）。<br>
+这里将实例化并且完全初始化完成，可以交付给IoC容器的单例Bean使用并加入了singletonObjects集合（一级缓存）。<br>
 关于循环依赖，笔者将在下一篇文章介绍。
 # 三、Bean生命周期
 ## 1.源码探究
 经过上面的讲解，我们已经比较详细的了解了Bean的创建过程。我们可以分类关注这些方法或过程:<br>
 1.bean自身的方法或操作,先实例化(instantiation)、属性填充(setter/populate)、初始化(initialize)、使用中、销毁。这个Bean层级的。<br>
 然后我们再关注:<br>
-2.BeanPostProcessor,后置处理器对Bean的自身方法的一些增强。这是容器层级的，一个BeanPostProcessor可以作用于所有的。
+2.BeanPostProcessor,后置处理器对Bean的自身方法的一些增强。这是容器层级的，一个BeanPostProcessor可以作用于所有的Bean。
 以及:<br>
 3.Bean实现Aware接口获得应用上下文相关的信息。这个也是Bean层级的。<br>
 我们这里先忽略了BeanFactoryPostProcessor，对BeanFactory的增强处理器，关注于与Bean相关的拓展处理。
@@ -491,7 +491,131 @@ protected void addSingleton(String beanName, Object singletonObject) {
 		return exposedObject;
 	}
 ```
-关注Bean自身，这里创建新的单例Bean的核心的四个步骤。我们阅读BeanPostProcessor和InstantiationAwareBeanPostProcessor如下：<br>
+关注Bean自身，这里是创建新的单例Bean的核心的四个步骤。我们阅读BeanPostProcessor和InstantiationAwareBeanPostProcessor如下：<br>
+```java
+public interface BeanPostProcessor {
+
+	/**
+	 * Apply this {@code BeanPostProcessor} to the given new bean instance <i>before</i> any bean
+	 * initialization callbacks (like InitializingBean's {@code afterPropertiesSet}
+	 * or a custom init-method). The bean will already be populated with property values.
+	 * The returned bean instance may be a wrapper around the original.
+	 * <p>The default implementation returns the given {@code bean} as-is.
+	 * @param bean the new bean instance
+	 * @param beanName the name of the bean
+	 * @return the bean instance to use, either the original or a wrapped one;
+	 * if {@code null}, no subsequent BeanPostProcessors will be invoked
+	 * @throws org.springframework.beans.BeansException in case of errors
+	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
+	 */
+	@Nullable
+	default Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		return bean;
+	}
+
+	/**
+	 * Apply this {@code BeanPostProcessor} to the given new bean instance <i>after</i> any bean
+	 * initialization callbacks (like InitializingBean's {@code afterPropertiesSet}
+	 * or a custom init-method). The bean will already be populated with property values.
+	 * The returned bean instance may be a wrapper around the original.
+	 * <p>In case of a FactoryBean, this callback will be invoked for both the FactoryBean
+	 * instance and the objects created by the FactoryBean (as of Spring 2.0). The
+	 * post-processor can decide whether to apply to either the FactoryBean or created
+	 * objects or both through corresponding {@code bean instanceof FactoryBean} checks.
+	 * <p>This callback will also be invoked after a short-circuiting triggered by a
+	 * {@link InstantiationAwareBeanPostProcessor#postProcessBeforeInstantiation} method,
+	 * in contrast to all other {@code BeanPostProcessor} callbacks.
+	 * <p>The default implementation returns the given {@code bean} as-is.
+	 * @param bean the new bean instance
+	 * @param beanName the name of the bean
+	 * @return the bean instance to use, either the original or a wrapped one;
+	 * if {@code null}, no subsequent BeanPostProcessors will be invoked
+	 * @throws org.springframework.beans.BeansException in case of errors
+	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet
+	 * @see org.springframework.beans.factory.FactoryBean
+	 */
+	@Nullable
+	default Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+		return bean;
+	}
+
+}
+
+```
+和
+```java
+public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
+
+	/**
+	 * Apply this BeanPostProcessor <i>before the target bean gets instantiated</i>.
+	 * The returned bean object may be a proxy to use instead of the target bean,
+	 * effectively suppressing default instantiation of the target bean.
+	 * <p>If a non-null object is returned by this method, the bean creation process
+	 * will be short-circuited. The only further processing applied is the
+	 * {@link #postProcessAfterInitialization} callback from the configured
+	 * {@link BeanPostProcessor BeanPostProcessors}.
+	 * <p>This callback will be applied to bean definitions with their bean class,
+	 * as well as to factory-method definitions in which case the returned bean type
+	 * will be passed in here.
+	 * <p>Post-processors may implement the extended
+	 * {@link SmartInstantiationAwareBeanPostProcessor} interface in order
+	 * to predict the type of the bean object that they are going to return here.
+	 * <p>The default implementation returns {@code null}.
+	 * @param beanClass the class of the bean to be instantiated
+	 * @param beanName the name of the bean
+	 * @return the bean object to expose instead of a default instance of the target bean,
+	 * or {@code null} to proceed with default instantiation
+	 * @throws org.springframework.beans.BeansException in case of errors
+	 * @see #postProcessAfterInstantiation
+	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition#getBeanClass()
+	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition#getFactoryMethodName()
+	 */
+	@Nullable
+	default Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) throws BeansException {
+		return null;
+	}
+
+	/**
+	 * Perform operations after the bean has been instantiated, via a constructor or factory method,
+	 * but before Spring property population (from explicit properties or autowiring) occurs.
+	 * <p>This is the ideal callback for performing custom field injection on the given bean
+	 * instance, right before Spring's autowiring kicks in.
+	 * <p>The default implementation returns {@code true}.
+	 * @param bean the bean instance created, with properties not having been set yet
+	 * @param beanName the name of the bean
+	 * @return {@code true} if properties should be set on the bean; {@code false}
+	 * if property population should be skipped. Normal implementations should return {@code true}.
+	 * Returning {@code false} will also prevent any subsequent InstantiationAwareBeanPostProcessor
+	 * instances being invoked on this bean instance.
+	 * @throws org.springframework.beans.BeansException in case of errors
+	 * @see #postProcessBeforeInstantiation
+	 */
+	default boolean postProcessAfterInstantiation(Object bean, String beanName) throws BeansException {
+		return true;
+	}
+
+	/**
+	 * Post-process the given property values before the factory applies them
+	 * to the given bean.
+	 * <p>The default implementation returns the given {@code pvs} as-is.
+	 * @param pvs the property values that the factory is about to apply (never {@code null})
+	 * @param bean the bean instance created, but whose properties have not yet been set
+	 * @param beanName the name of the bean
+	 * @return the actual property values to apply to the given bean (can be the passed-in
+	 * PropertyValues instance), or {@code null} to skip property population
+	 * @throws org.springframework.beans.BeansException in case of errors
+	 * @since 5.1
+	 */
+	@Nullable
+	default PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName)
+			throws BeansException {
+
+		return pvs;
+	}
+
+}
+
+```
 因此我们推断BeanPostProcessor的postProcessBeforeInitialization和postProcessAfterInitialization看名字应该在"initializeBean"前
 和后,<br>而InstantiationAwareBeanPostProcessor的postProcessBeforeInstantiation和postProcessAfterInstantiation应该在"1.实例化"的
 前和后，而Aware接口笔者尚未从从上面源码获知是从何处调用的。<br>
