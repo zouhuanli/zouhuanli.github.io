@@ -82,7 +82,7 @@ public class AnnotationContextTest {
 Beta.b(): alpha=com.homura.app.bean.Alpha@52045dbe
 ```
 我们注意这两行日志，
-<strong>"2023-09-28 19:55:53,331|TRACE|AbstractAutowireCapableBeanFactory.java:588 |main|Eagerly caching bean 'alpha' to allow for resolving potential circular references"<strong>,
+<strong>"2023-09-28 19:55:53,331|TRACE|AbstractAutowireCapableBeanFactory.java:588 |main|Eagerly caching bean 'alpha' to allow for resolving potential circular references"</strong>,
 提前缓存暴露alpha,以便解决循环依赖。定位到源码：
 ```java
 	// Eagerly cache singletons to be able to resolve circular references
@@ -251,9 +251,6 @@ protected <T> T doGetBean(
 				}
 
 				finally {
-					if (recordSuppressedExceptions) {
-						this.suppressedExceptions = null;
-					}
 					afterSingletonCreation(beanName);
 				}
 				if (newSingleton) {
@@ -298,7 +295,7 @@ protected Object doCreateBean(String beanName, RootBeanDefinition mbd, @Nullable
 			populateBean(beanName, mbd, instanceWrapper);
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
-		catch (Throwable ex) {
+		
 		
 
 		if (earlySingletonExposure) {
@@ -321,23 +318,24 @@ protected Object doCreateBean(String beanName, RootBeanDefinition mbd, @Nullable
 	}
 ```
 笔者现源码角度分析BeanA和BeanB的执行流程，a指alpha，a指beta。假定a先加载先创建,并且容器的bean集合是空的。<br>
-1.a的过程：先创建a。a去getSingleton查询三级缓存(singletonObjects-->earlySingletonObjects--->singletonFactories顺序)获取，因为缓存集合都是空的。没有，则开始创建流程。<br>
-2.a的过程：进入getSingleton方法，先标记a为创建中，加入singletonsCurrentlyInCreation集合。<br>
-3.a的过程：调用singletonFactory创建a，进入createBean方法，再进入doCreateBean方法。<br>
-4.a的过程：<strong>doCreateBean是真正创建bean实例的方法，分为四步：实例化（调用构造器反射创建对象）、属性填充和依赖注入、初始化、注册销毁方法。对于单例在实例化之后，马上加入singletonFactories三级缓存中。<br>
+1>a的过程：先创建a。a去getSingleton查询三级缓存(singletonObjects-->earlySingletonObjects--->singletonFactories顺序)获取，因为缓存集合都是空的。没有，则开始创建流程。<br>
+2>a的过程：进入getSingleton方法，先标记a为创建中，加入singletonsCurrentlyInCreation集合。<br>
+3>a的过程：调用singletonFactory创建a，进入createBean方法，再进入doCreateBean方法。<br>
+4>a的过程：<strong>doCreateBean是真正创建bean实例的方法，分为四步：实例化（调用构造器反射创建对象）、属性填充和依赖注入、初始化、注册销毁方法。对于单例在实例化之后，马上加入singletonFactories三级缓存中。<br>
 存入的key是bean的name，值是"() -> getEarlyBeanReference(beanName, mbd, bean)"这样一个的singletonFactory的的工厂方法。</strong><br>
-5.a的过程：然后a开始属性填充和依赖注入，按type或者name注入时候发现依赖b。则开始getBean(b),创建b。<br>
-6.b的过程：b的创建过程同1步~5步。b开始依赖注入的时候又发现依赖a，则开始getBean(a)。<br>
-7.b的过程：<strong>b获取a的时候，会从getSingleton这里从singletonFactories这个三级缓存中获取到a，此时a只是实例化、还未属性填充和依赖注入，尚未初始化完成，是一个半成品。</strong><br>
-8.b的过程:b此时完成了属性填充和依赖注入，然后初始化完成，注册销毁方法完成。然后b此时是一个完全对象了，加入到了一级缓存singletonObjects中，并且持有了a的引用。<br>
-9.a的过程：8步之后b已经完成创建完成了，并加入一级缓存singletonObjects。此时a在populateBean方法也完成了然后退出方法，并且持有了b的引用，b此时是完整对象。<br>
-10.a的过程：a初始化(initializeBean方法)完成,因为上面在7步这里将a的缓存从singletonFactories删除，升级到二级缓存earlySingletonObjects，所以earlySingletonObjects存有a的引用。<br>
-11.a的过程：退出doCreateBean和createBean方法，进入getSingleton(String beanName, ObjectFactory<?> singletonFactory)这个方法,在singletonsCurrentlyInCreation移除a，<br>
+5>a的过程：然后a开始属性填充和依赖注入，按type或者name注入时候发现依赖b。则开始getBean(b),创建b。<br>
+6>b的过程：b的创建过程同1步~5步。b开始依赖注入的时候又发现依赖a，则开始getBean(a)。<br>
+7>b的过程：<strong>b获取a的时候，会从getSingleton这里从singletonFactories这个三级缓存中获取到a，此时a只是实例化、还未属性填充和依赖注入，尚未初始化完成，是一个半成品。</strong><br>
+8>b的过程:b此时完成了属性填充和依赖注入，然后初始化完成，注册销毁方法完成。然后b此时是一个完全对象了，加入到了一级缓存singletonObjects中，并且持有了a的引用。<br>
+9>a的过程：8步之后b已经完成创建完成了，并加入一级缓存singletonObjects。此时a在populateBean方法也完成了然后退出方法，并且持有了b的引用，b此时是完整对象。<br>
+10>a的过程：a初始化(initializeBean方法)完成,因为上面在7步这里将a的缓存从singletonFactories删除，升级到二级缓存earlySingletonObjects，所以earlySingletonObjects存有a的引用。<br>
+11>a的过程：退出doCreateBean和createBean方法，进入getSingleton(String beanName, ObjectFactory<?> singletonFactory)这个方法,在singletonsCurrentlyInCreation移除a，<br>
 然后从earlySingletonObjects、singletonFactories删除a，并加入到一级缓存singletonObjects中。<br>
-12.至此，a和b都创建完成，并且初始化完成了，然后都加入了一级缓存singletonObjects，后续get就之间从里面获取，不会走创建流程。<br>
 
-可以看出最核心的部分就是使用了三级缓存和提前加入到singletonFactories提前曝光对象的引用。也就是4步和7步。
-下面看下debug流程的一些核心步骤数据：
+至此，a和b都创建完成，并且初始化完成了，然后都加入了一级缓存singletonObjects，后续get就之间从里面获取，不会走创建流程。<br>
+
+可以看出最核心的部分就是使用了三级缓存和提前加入到singletonFactories提前曝光对象的引用。也就是4步和7步。<br>
+下面看下debug流程的一些核心步骤数据：<br>
 a加入singletonFactories中:
 ![addATo](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-28-spring_source_code_reading_7/addATo.png)
 
@@ -349,11 +347,12 @@ b的注入阶段去获取a：
 
 
 # 三、总结和注意点
-先总结一下循环依赖的解决过程如下,图片不是我画的,和我的源码解读的流程一样。图片来自于"https://mp.weixin.qq.com/s/Ye0qCCnffYdhVKSiMWOllg"
+先总结一下循环依赖的解决过程如下,图片不是我画的,和我的源码解读的流程一样。<br>图片来自于"https://mp.weixin.qq.com/s/Ye0qCCnffYdhVKSiMWOllg"
+
 
 ![circularReference](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-09-28-spring_source_code_reading_7/circularReference.png)
 
-一些注意点：
+一些注意点：<br>
 1.没有解决构造器的循环依赖。官方解释如下：
 
 ```text
