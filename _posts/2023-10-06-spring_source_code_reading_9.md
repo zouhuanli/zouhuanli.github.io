@@ -210,7 +210,7 @@ protected Object resolveBeforeInstantiation(String beanName, RootBeanDefinition 
         }
 ```
 这里使用到了beanPostProcessorsBeforeInstantiation和beanPostProcessorsAfterInitialization来创建代理对象。
-我们开始阅读<stong>AbstractAutoProxyCreator</strong>的<stong>postProcessBeforeInstantiation</strong>。
+我们开始阅读<strong>AbstractAutoProxyCreator</strong>的<strong>postProcessBeforeInstantiation</strong>。
 # 二、AnnotationAwareAspectJAutoProxyCreator
 先看下源码:
 ```java
