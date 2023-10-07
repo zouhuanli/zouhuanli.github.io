@@ -70,7 +70,7 @@ public class AopNamespaceHandler extends NamespaceHandlerSupport {
 
 }
 ```
-这里就是解析<aop:config>、   <aop:aspectj-autoproxy/>、<aop:scoped-proxy/>、<aop:spring-configured/>等标签的解析类了。
+这里就是解析&lt;aop:config>、&lt;aop:aspectj-autoproxy/>、&lt;aop:scoped-proxy/>、&lt;aop:spring-configured/>等标签的解析类了。
 
 ## 2.ConfigBeanDefinitionParser
 我们继续研读ConfigBeanDefinitionParser这个解析AOP配置的类。我们发现，到AopConfigUtils里面:
@@ -105,7 +105,7 @@ public BeanDefinition parse(Element element, ParserContext parserContext) {
 		return null;
 	}
 ```
-这里分别解析了pointcut、advisor、aspect等元素，继续跟踪parseAspect方法,解析<aop:aspect>标签如下：
+这里分别解析了pointcut、advisor、aspect等元素，继续跟踪parseAspect方法,解析&lt;aop:aspect>标签如下：
 
 ![AopAspect](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-07-spring_source_code_reading_9/AopAspect.png)
 
