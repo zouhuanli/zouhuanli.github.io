@@ -40,6 +40,7 @@ public @interface EnableAspectJAutoProxy {
 
 本文源码地址为:[https://github.com/zouhuanli/SpringMvcDemo.git](https://github.com/zouhuanli/SpringMvcDemo.git).<br>
 cglib是一个基于ASM字节码操纵工具的代码生成库，我们先看看单独使用cglib的示例。
+
 # 一、Cglib的简单使用
 
 服务接口：
@@ -148,13 +149,14 @@ does not “opens java.lang“ to unnamed module"这样的错误，这是JDK9之
 
 ```
 可以看到在代码层面基本的操作就是创建增强器，设置回调方法，实现拦截方法intercept增加增强操作。
-我们再继续阅读Spring使用Cglib创建代理对象的源码
+我们再继续阅读Spring使用Cglib创建代理对象的源码。
+
 # 二、CglibAopProxy的创建代理对象过程
 
 进入CglibAopProxy的buildProxy方法：
 ```java
 private Object buildProxy(@Nullable ClassLoader classLoader, boolean classOnly) {
-            //获得目标对象的裂隙
+            //获得目标对象的类型
 			Class<?> rootClass = this.advised.getTargetClass();
 			Assert.state(rootClass != null, "Target class must be available for creating a CGLIB proxy");
 
@@ -205,6 +207,8 @@ private Object buildProxy(@Nullable ClassLoader classLoader, boolean classOnly) 
 ```
 回调列表如下：
 
+![callbacks](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-09-spring_source_code_reading_11/callbacks.png)
+
 继续进入createProxyClassAndInstance方法。
 ```java
 protected Object createProxyClassAndInstance(Enhancer enhancer, Callback[] callbacks) {
@@ -220,6 +224,6 @@ protected Object createProxyClassAndInstance(Enhancer enhancer, Callback[] callb
 
 # 三、参考材料
 
-1.Spring源码(版本6.0.11)<br>
+1. Spring源码(版本6.0.11)<br>
 2.《spring源码深度解析》(郝佳)<br>
 3.《Spring Framework Documentation》(Version 6.0.8)
