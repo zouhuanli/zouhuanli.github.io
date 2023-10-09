@@ -8,8 +8,8 @@ author: zouhuanli
 ---
 
 本文是Spring源码阅读计划的第十一篇文章，本文介绍Cglib动态代理创建的AOP对象的过程。<br>
-上一篇文章介绍AopProxy有JdkDynamicAopProxy、ObjenesisCglibAopProxy（CglibAopProxy的子类）两个，是创建代理对象的委派类。
-AopProxy.getProxy就是使用Jdk动态代理或者Cglib动态代理生成实际的代理对象的方法。本文介绍CglibAopProxy创建代理对象的过程。
+上一篇文章介绍AopProxy有JdkDynamicAopProxy、ObjenesisCglibAopProxy（CglibAopProxy的子类）两个，是创建代理对象的委派类。<br>
+AopProxy.getProxy就是使用Jdk动态代理或者Cglib动态代理生成实际的代理对象的方法。本文介绍CglibAopProxy创建代理对象的过程。<br>
 如何选择JdkDynamicAopProxy还是CglibAopProxy？看下这个注解@EnableAspectJAutoProxy。
 
 ```java
@@ -39,7 +39,7 @@ public @interface EnableAspectJAutoProxy {
 ```
 
 本文源码地址为:[https://github.com/zouhuanli/SpringMvcDemo.git](https://github.com/zouhuanli/SpringMvcDemo.git).<br>
-cglib是一个基于ASM字节码操纵工具的代码生成库，我们先看看单独使用cglib的示例。
+cglib是一个基于ASM字节码操纵工具的代码生成库，我们先看看单独使用cglib的示例。<br>
 
 # 一、Cglib的简单使用
 
@@ -156,7 +156,7 @@ does not “opens java.lang“ to unnamed module"这样的错误，这是JDK9之
 进入CglibAopProxy的buildProxy方法：
 ```java
 private Object buildProxy(@Nullable ClassLoader classLoader, boolean classOnly) {
-            //获得目标对象的类型
+                    //获得目标对象的类型
 			Class<?> rootClass = this.advised.getTargetClass();
 			Assert.state(rootClass != null, "Target class must be available for creating a CGLIB proxy");
 
@@ -170,7 +170,7 @@ private Object buildProxy(@Nullable ClassLoader classLoader, boolean classOnly) 
 			}
 
 			
-            //创建增强器
+                    //创建增强器
 			// Configure CGLIB Enhancer...
 			Enhancer enhancer = createEnhancer();
 			if (classLoader != null) {
@@ -180,7 +180,7 @@ private Object buildProxy(@Nullable ClassLoader classLoader, boolean classOnly) 
 					enhancer.setUseCache(false);
 				}
 			}
-            //设置目标对象的类型
+                    //设置目标对象的类型
 			enhancer.setSuperclass(proxySuperClass);
 			enhancer.setInterfaces(AopProxyUtils.completeProxiedInterfaces(this.advised));
 			enhancer.setNamingPolicy(SpringNamingPolicy.INSTANCE);
