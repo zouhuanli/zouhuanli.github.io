@@ -941,7 +941,7 @@ public final synchronized void start() throws LifecycleException {
     }
 ```
 这里主要是Endpoint的启动方法。<br>
-StandardEngine添加children这个map中，然后依次启动Host、Context。
+StandardEngine添加Host到children这个map中，然后依次启动Host、Context。
 
 
 # 三、参考材料
