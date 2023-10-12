@@ -143,21 +143,21 @@ init初始化方法由servlet container去初始化，service方法是核心方�
 
 ![tomcat-top-design](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-11-spring_source_code_reading_13/tomcat-top-design.jpeg)
 
-理解一下这些顶层的组件。
-Server：服务器，表示整个tomcat服务器，顶层组件。StandardServer是默认实现类。
-Service:服务，指的是具体的服务App。Service的默认实现类是StandardService。
-Container:容器,看源码有Engine、Host、Context、Wrapper四类。
+理解一下这些顶层的组件。<br>
+Server：服务器，表示整个tomcat服务器，顶层组件。StandardServer是默认实现类。<br>
+Service:服务，指的是具体的服务App。Service的默认实现类是StandardService。<br>
+Container:容器,看源码有Engine、Host、Context、Wrapper四类。<br>
 
 ![Container](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-11-spring_source_code_reading_13/Container.png)
 
-Connector:连接器，接受Web请求并封装之后转发给Container容器。
-其他组件,主要是Tomcat管理和支持的组件：
-Manager:管理器。
-Logger:日志器。
-Loader:加载器，类加载相关
-Pipeline:管道。
-Valve:阀门。
-Realm：认证和授权。
+Connector:连接器，接受Web请求并封装之后转发给Container容器。<br>
+其他组件,主要是Tomcat管理和支持的组件：<br>
+Manager:管理器。<br>
+Logger:日志器。<br>
+Loader:加载器，类加载相关。<br>
+Pipeline:管道。<br>
+Valve:阀门。<br>
+Realm：认证和授权。<br>
 
 tomcat主要有这些组件组成，这里不做过多讨论。
 
