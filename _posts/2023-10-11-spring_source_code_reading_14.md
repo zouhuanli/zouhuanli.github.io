@@ -35,7 +35,7 @@ DispatcherServlet和ApplicationContext我们可以看一下官网的这个图片
 ![mvc-context-hierarchy](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-12-spring_source_code_reading_14/mvc-context-hierarchy.png)
 
 可以看到DispatcherServlet的Context主要是初始化web相关的bean，如Controller、Resolver、handleMapping等。<br>
-而RootWebApplicationContext主要是初始化基础Bean，如Service、DAO等，已经其他非web层的组件。
+而RootWebApplicationContext主要是初始化基础Bean，如Service、DAO等，以及其他非web层的组件。
 
 
 # 二、DispatcherServlet的初始化流程
