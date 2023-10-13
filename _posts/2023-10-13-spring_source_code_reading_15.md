@@ -22,13 +22,13 @@ author: zouhuanli
 
 主要流程如下：
 
-1.用户(前端)请求DispatcherServlet，DispatcherServlet作为核心的前端控制器，自己不处理请求，只做主流程串联，进行请求分派。
-2.DispatcherServlet将请求转发给HandlerMapping，handlerMapping返回HandlerExecutionChain（包含Handler控制器和拦截器列表）。
-3.DispatcherServlet再将Handler控制器转发给HandlerAdapter，获得Handler的适配器。
-4.HandlerAdapter真正请求处理器的方法，返回ModelAndView对象。也能不返回ModelAndView对象，直接写回response数据，<br>如@ResponseBody，RequestMappingHandlerAdapter调用Handler的目标方法之后，直接返回null，后面的和View对象的流程就不用了。
-5.ModelAndView再进行视图解析，解析为具体的视图View。
-6.视图View执行render方法进行渲染，Model对象是一个Map结构。
-7.DispatcherServlet将渲染后的数据返回给用户(前端)。
+1.用户(前端)请求DispatcherServlet，DispatcherServlet作为核心的前端控制器，自己不处理请求，只做主流程串联，进行请求分派。<br>
+2.DispatcherServlet将请求转发给HandlerMapping，handlerMapping返回HandlerExecutionChain（包含Handler控制器和拦截器列表）。<br>
+3.DispatcherServlet再将Handler控制器转发给HandlerAdapter，获得Handler的适配器。<br>
+4.HandlerAdapter真正请求处理器的方法，返回ModelAndView对象。也能不返回ModelAndView对象，直接写回response数据，<br>如@ResponseBody，RequestMappingHandlerAdapter调用Handler的目标方法之后，直接返回null，后面的和View对象的流程就不用了。<br>
+5.ModelAndView再进行视图解析，解析为具体的视图View。<br>
+6.视图View执行render方法进行渲染，Model对象是一个Map结构。<br>
+7.DispatcherServlet将渲染后的数据返回给用户(前端)。<br>
 
 笔者现结合DispatcherServlet源码详细介绍请求流程。先从Servlet的service()方法作为入口开始阅读。
 
