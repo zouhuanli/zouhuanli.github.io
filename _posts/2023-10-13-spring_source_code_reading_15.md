@@ -337,7 +337,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 				}
 
 				applyDefaultViewName(processedRequest, mv);
-                            //拦截器前置处理
+                            //拦截器后置处理
 				mappedHandler.applyPostHandle(processedRequest, response, mv);
 			}
 			catch (Exception ex) {
