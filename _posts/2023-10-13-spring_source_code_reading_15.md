@@ -337,7 +337,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 				}
 
 				applyDefaultViewName(processedRequest, mv);
-                         //拦截器前置处理
+                            //拦截器前置处理
 				mappedHandler.applyPostHandle(processedRequest, response, mv);
 			}
 			catch (Exception ex) {
@@ -348,10 +348,10 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 				// making them available for @ExceptionHandler methods and other scenarios.
 				dispatchException = new ServletException("Handler dispatch failed: " + err, err);
 			}
-                         //处理handler(controller)的目标方法的返回结果
-                        //1.异常处理processHandlerException
-                        //2.视图解析resolveViewName
-                        //3.视图渲染view.render()
+                            //处理handler(controller)的目标方法的返回结果
+                            //1.异常处理processHandlerException
+                            //2.视图解析resolveViewName
+                            //3.视图渲染view.render()
 			processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
 		}
 		catch (Exception ex) {
