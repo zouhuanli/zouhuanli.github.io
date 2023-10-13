@@ -66,7 +66,7 @@ service方法如下
     public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException;
 ```
 这里的ServletRequest、ServletResponse不仅仅是http协议的请求，可以是任何的协议的Web请求。<br>
-GenericServlet的service()方法是空方法，继续阅读子类。
+GenericServlet的service()方法是空方法，继续阅读子类。<br>
 HttpServletRequest的service()方法如下，可以看到主要就是判断是否Http协议的请求。
 ```java
 /**
@@ -182,16 +182,16 @@ protected final void processRequest(HttpServletRequest request, HttpServletRespo
 
 		long startTime = System.currentTimeMillis();
 		Throwable failureCause = null;
-        //获得之前请求的LocaleContext
+            //获得之前请求的LocaleContext
 		LocaleContext previousLocaleContext = LocaleContextHolder.getLocaleContext();
 		LocaleContext localeContext = buildLocaleContext(request);
-        //获得之前请求的参数
+            //获得之前请求的参数
 		RequestAttributes previousAttributes = RequestContextHolder.getRequestAttributes();
 		ServletRequestAttributes requestAttributes = buildRequestAttributes(request, response, previousAttributes);
 
 		WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
 		asyncManager.registerCallableInterceptor(FrameworkServlet.class.getName(), new RequestBindingInterceptor());
-        //初始化ContextHolders
+            //初始化ContextHolders
 		initContextHolders(request, localeContext, requestAttributes);
 
 		try {
@@ -243,7 +243,7 @@ protected final void processRequest(HttpServletRequest request, HttpServletRespo
 		}
 
 		// Make framework objects available to handlers and view objects.
-        //将WebApplicationContext、localeResolver、themeResolver等资源的引用存入reques的参数内
+                 //将WebApplicationContext、localeResolver、themeResolver等资源的引用存入reques的参数内
 		request.setAttribute(WEB_APPLICATION_CONTEXT_ATTRIBUTE, getWebApplicationContext());
 		request.setAttribute(LOCALE_RESOLVER_ATTRIBUTE, this.localeResolver);
 		request.setAttribute(THEME_RESOLVER_ATTRIBUTE, this.themeResolver);
@@ -265,7 +265,7 @@ protected final void processRequest(HttpServletRequest request, HttpServletRespo
 		}
 
 		try {
-            //真正的处理请求方法
+                    //真正的处理请求方法
 			doDispatch(request, response);
 		}
 		finally {
@@ -303,7 +303,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 				multipartRequestParsed = (processedRequest != request);
 
 				// Determine handler for the current request.
-                     //请求HandlerMapping获得HandlerExecutionChain(handler+interceptorList)
+                             //请求HandlerMapping获得HandlerExecutionChain(handler+interceptorList)
 				mappedHandler = getHandler(processedRequest);
 				if (mappedHandler == null) {
 					noHandlerFound(processedRequest, response);
@@ -311,7 +311,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 				}
 
 				// Determine handler adapter for the current request.
-                    //获得handler的适配器HandlerAdapter
+                            //获得handler的适配器HandlerAdapter
 				HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 
 				// Process last-modified header, if supported by the handler.
@@ -323,13 +323,13 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 						return;
 					}
 				}
-                     //拦截器前置处理
+                            //拦截器前置处理
 				if (!mappedHandler.applyPreHandle(processedRequest, response)) {
 					return;
 				}
 
 				// Actually invoke the handler.
-                     //调用handler(controller)的目标方法
+                            //调用handler(controller)的目标方法
 				mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
 				if (asyncManager.isConcurrentHandlingStarted()) {
@@ -348,7 +348,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
 				// making them available for @ExceptionHandler methods and other scenarios.
 				dispatchException = new ServletException("Handler dispatch failed: " + err, err);
 			}
-                    //处理handler(controller)的目标方法的返回结果
+                         //处理handler(controller)的目标方法的返回结果
                         //1.异常处理processHandlerException
                         //2.视图解析resolveViewName
                         //3.视图渲染view.render()
@@ -408,11 +408,10 @@ TODO~
 
 
 # 四、@ResponseBody的处理流程
-此节，这里会不会太长了，单独拆分为一篇文章？
+此节在这里，这里会不会太长了，单独拆分为一篇文章？
 
 # 五、参考材料
 
 1.Spring源码(版本6.0.11)<br>
 2.《spring源码深度解析》(郝佳)<br>
 3.《Spring Framework Documentation》(Version 6.0.8)<br>
-4.http://jinnianshilongnian.iteye.com/
