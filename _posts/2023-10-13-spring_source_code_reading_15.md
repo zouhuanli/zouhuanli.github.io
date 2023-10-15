@@ -992,7 +992,7 @@ public class MyInterceptA implements HandlerInterceptor {
 ```
 主要是注意拦截器的三个方法的执行顺序：MyInterceptA preHandle、MyInterceptB preHandle、MyInterceptC preHandle、TimeCostIntercept preHandle，<br>
 TimeCostIntercept postHandle、MyInterceptC postHandle、MyInterceptB postHandle、MyInterceptA postHandle，<br>
-TimeCostIntercept postHandle、MyInterceptC postHandle、MyInterceptB postHandle、MyInterceptA postHandle。<br>
+TimeCostIntercept afterCompletion、MyInterceptC afterCompletion、MyInterceptB afterCompletion、MyInterceptA afterCompletion。<br>
 前置处理方法是正序的，后置处理和最终处理是倒序的。
 
 ## 2.过滤器、拦截器、自定义AOP切面三者的执行顺序
