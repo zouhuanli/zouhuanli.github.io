@@ -18,7 +18,7 @@ author: zouhuanli
 
 ```text
 POST ---方法 http://localhost:8080/springmvcdemo_war/user/hello ---服务地址  HTTP/1.1 ---协议版本号
-content-type: application/json  ---包报文头
+content-type: application/json  ---报文头
 charset: utf-8
 Content-Length: 51
 Connection: Keep-Alive
@@ -33,7 +33,7 @@ Accept-Encoding: br,deflate,gzip,x-gzip
 }
 ```
 
-RequestBody注解是将报文头绑定为方法的参数对象。例如：
+RequestBody注解是将报文体绑定为方法的参数对象。例如：
 
 ```java
  /**
@@ -60,7 +60,7 @@ RequestBody注解是将报文头绑定为方法的参数对象。例如：
  * validation can be applied by annotating the argument with {@code @Valid}.
 ```
 
-将报文头绑定为方法的参数对象，使用HttpMessageConverter将请求体转换为方法参数，使用@Valid注解进行校验请求。<br>
+将报文体绑定为方法的参数对象，使用HttpMessageConverter将请求体转换为方法参数，使用@Valid注解进行校验请求。<br>
 我们接着上文从“mv = ha.handle(processedRequest, response, mappedHandler.getHandler())”进入InvocableHandlerMethod#invokeForRequest方法开始阅读。
 
 ```java
@@ -215,7 +215,7 @@ private List<HandlerMethodArgumentResolver> getDefaultArgumentResolvers() {
 ```
 结果，去掉两个if条件，正好27个解析器,type也对的上的。<br>
 这里的处理就是很简单，遍历27个注册的参数解析器，返回第一个匹配的，也就是supportsParameter方法返回true的。<br>
-最后来的RequestResponseBodyMethodProcessor#supportsParameter方法，这里就简单判断了一下是否包含RequestBody注解。
+最后来到本例工程匹配的RequestResponseBodyMethodProcessor#supportsParameter方法，这里就简单判断了一下是否包含RequestBody注解。
 ```java
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
@@ -396,11 +396,11 @@ charset: utf-8
 }
 ```
 
-再进入RequestResponseBodyMethodProcessor#readWithMessageConverters方法。这里的消息转换器是“MappingJackson2HttpMessageConverter”。
+再进入RequestResponseBodyMethodProcessor#readWithMessageConverters方法。这里的消息转换器是“MappingJackson2HttpMessageConverter”，而不是StringHttpMessageConverter。
 我们继续进入来到read方法。
 
 
-### 2.1 HttpMessageConverter#read方法
+### 1.2 HttpMessageConverter#read方法
 
 进入read方法：
 ```java
@@ -638,7 +638,7 @@ returnValueHandlers返回值处理器的注册也是在之前的afterPropertiesS
 		}
 
 		// Try even with null body. ResponseBodyAdvice could get involved.
-        //注意看这行，入http响应报文outputMessage
+        //注意看这行，写入http响应报文outputMessage
         writeWithMessageConverters(httpEntity.getBody(), returnType, inputMessage, outputMessage);
 
 		// Ensure headers are flushed even if no body was written.
