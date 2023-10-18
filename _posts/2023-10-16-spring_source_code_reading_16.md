@@ -944,7 +944,7 @@ mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 可以看到HandlerMethodReturnValueHandler#handleReturnValue方法主要是设置是否需要View，和将Controller/handler的方法的执行结果设置为ModelAndView或者直接转换为Http请求结果写入到Response响应中。
 
 
-# 四、参考材料
+# 三、参考材料
 
 1.Spring源码(版本6.0.11)<br>
 2.《spring源码深度解析》(郝佳)<br>
