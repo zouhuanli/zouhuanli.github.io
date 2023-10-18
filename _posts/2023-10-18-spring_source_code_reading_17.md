@@ -7,11 +7,11 @@ comments: true
 author: zouhuanli
 ---
 
-本文是Spring源码阅读计划的第十七篇文章，本文着重事务元素的解读过程。<br>
-Spring事务也是是使用AOP创建代理来实现的，之前解读AOP标签的处理过程：解析AOP标签，注册Advisor(包含Pointcut切面方法，和Advice通知/增强处理),然后
-在Bean的postProcessAfterInitialization处理过程中AbstractAutoProxyCreator查询所有的Advisor对象匹配需要创建代理的bean，进行创建代理对象。<br>
+本文是Spring源码阅读计划的第十七篇文章，本文着重解读事务元素的解析过程和事务代理对象的创建过程。<br>
+Spring事务也是是使用AOP创建代理来实现的，之前解读AOP标签的处理过程：解析AOP标签，注册Advisor(包含Pointcut切面方法和Advice通知/增强处理),然后
+在Bean的postProcessAfterInitialization处理过程中,由AbstractAutoProxyCreator查询所有的Advisor对象并匹配需要创建代理的bean，进行创建代理对象。<br>
 
-Spring使用‘tx:annotation’元素开启@Transaction注解事务，mode=proxy是默认的代理模式。<br>
+Spring使用&lt;tx:advice/>元素开启@Transaction注解事务，mode=proxy是默认的代理模式。<br>
 
 ```xml
 
@@ -131,7 +131,7 @@ private static class AopAutoProxyConfigurer {
 	}
 ```
 
-上面注册了三个Bean：AnnotationTransactionAttributeSource、TransactionInterceptor、BeanFactoryTransactionAttributeSourceAdvisor这三个都是基础框架Bean，<br>
+上面注册了三个Bean：AnnotationTransactionAttributeSource、TransactionInterceptor、BeanFactoryTransactionAttributeSourceAdvisor这三个都是基础框架Bean,
 在AbstractAutoProxyCreator创建代理对象时候会直接shouldSkip返回true跳过。<br>
 我们先看下这个三个类型的类关系图。
 AnnotationTransactionAttributeSource：
@@ -189,7 +189,7 @@ BeanFactoryTransactionAttributeSourceAdvisor:
 	}
 
 ```
-这里调用TransactionAnnotationParser判断目标类是否需要做事务增强处理，是否需要创建事务属性。我们继续进入SpringTransactionAnnotationParser。
+这里调用TransactionAnnotationParser判断目标类是否需要做事务增强处理，是否需要创建事务属性,并解析事务属性(@Transactional注解)。我们继续进入SpringTransactionAnnotationParser。
 ```java
 
 
@@ -203,7 +203,7 @@ BeanFactoryTransactionAttributeSourceAdvisor:
 @SuppressWarnings("serial")
 public class SpringTransactionAnnotationParser implements TransactionAnnotationParser, Serializable {
 
-    //判断是否需要事务增强处理，是否是创建事务代理的目标类.isCandidateClass(UserServiceImpl.class)=true
+    //判断是否需要事务增强处理，是否是创建事务代理的目标类.本例isCandidateClass(UserServiceImpl.class)=true
 	@Override
 	public boolean isCandidateClass(Class<?> targetClass) {
 		return AnnotationUtils.isCandidateClass(targetClass, Transactional.class);
@@ -226,7 +226,7 @@ public class SpringTransactionAnnotationParser implements TransactionAnnotationP
 	public TransactionAttribute parseTransactionAnnotation(Transactional ann) {
 		return parseTransactionAnnotation(AnnotationUtils.getAnnotationAttributes(ann, false, false));
 	}
-
+    //解析各种事务属性
 	protected TransactionAttribute parseTransactionAnnotation(AnnotationAttributes attributes) {
 		RuleBasedTransactionAttribute rbta = new RuleBasedTransactionAttribute();
 
@@ -313,7 +313,7 @@ public class BeanFactoryTransactionAttributeSourceAdvisor extends AbstractBeanFa
 
 }
 ```
-TransactionAttributeSourcePointcut就是上面持有TransactionAttributeSource引用的切入点对象。
+TransactionAttributeSourcePointcut持有TransactionAttributeSource对象引用,TransactionAttributeSourcePointcut持有TransactionAttributeSource对象引用。
 同时BeanFactoryTransactionAttributeSourceAdvisor的“Advice advice”通知对象就是TransactionInterceptor对象。
 ```java
 
@@ -331,6 +331,13 @@ TransactionAttributeSourcePointcut就是上面持有TransactionAttributeSource�
 		return advisor;
 	}
 ```
+这样的BeanFactoryTransactionAttributeSourceAdvisor和其他对象的关系就清楚了：
+![BeanFactoryTransactionAttributeSourceAdvisor_TopView](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-18-spring_source_code_reading_17/BeanFactoryTransactionAttributeSourceAdvisor_TopView.png)
+
+这里把握两条主要的依赖关系线路：
+1.BeanFactoryTransactionAttributeSourceAdvisor——TransactionAttributeSourcePointcut——TransactionAttributeSource——AbstractFallbackTransactionAttributeSource
+——AnnotationTransactionAttributeSource——TransactionAnnotationParser——SpringTransactionAnnotationParser。<br>
+2.BeanFactoryTransactionAttributeSourceAdvisor——AbstractBeanFactoryPointcutAdvisor——Advice——TransactionInterceptor。<br>
 至此，事务属性都已经解析完成，并且事务的Advisor(包含Pointcut和Advice对象)都已经解析完成。<br>
 接下来就是实际去创建代理对象了，还是在AOP解读文章那提到的AbstractAutoProxyCreator#wrapIfNecessary方法。
 
