@@ -380,7 +380,8 @@ protected Object wrapIfNecessary(Object bean, String beanName, Object cacheKey) 
 
 ![proxy](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-18-spring_source_code_reading_17/proxy.png)
 
-如何将UserService匹配上对应的BeanFactoryTransactionAttributeSourceAdvisor切面配置类，我们跟踪canApply方法，我进入TransactionAttributeSourcePointcut#matches方法：
+如何将UserService匹配上对应的BeanFactoryTransactionAttributeSourceAdvisor切面配置类？我们跟踪canApply方法，我进入TransactionAttributeSourcePointcut#matches方法，这里匹配到配置的
+事务属性即getTransactionAttribute方法返回对应的事务属性就需要创建事务代理对象。
 ```java
 
 	@Override
