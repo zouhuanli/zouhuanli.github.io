@@ -2,7 +2,7 @@
 layout: post
 title: "GitHub相关:GitHu博客无法显示图片的问题的解决方法"
 date: 2023-10-18
-tags: [ spring ]
+tags: [ github ]
 comments: true
 author: zouhuanli
 ---
