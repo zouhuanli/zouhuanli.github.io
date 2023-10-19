@@ -12,7 +12,7 @@ author: zouhuanli
 
 1.使用梯子。读者不会使用梯子的请自己去解决，笔者不提供任何关于梯子的帮助。<br>
 2.登录一个查询DNS的网站。比如笔者博客的一个图片的地址'https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-19-spring_source_code_reading_18/txInfo.png',
-复制域名‘raw.githubusercontent.com’，查询DNS获得IP，如下（不保证正确性，也不保证为了不会变更)：<br>
+复制域名‘raw.githubusercontent.com’，查询DNS获得IP，如下（不保证正确性，也不保证未来不会变更)：<br>
 
 ```text
 185.199.110.133 raw.githubusercontent.com
