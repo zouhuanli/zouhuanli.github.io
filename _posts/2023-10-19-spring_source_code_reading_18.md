@@ -215,26 +215,26 @@ author: zouhuanli
 
 		if (txAttr == null || !(ptm instanceof CallbackPreferringPlatformTransactionManager cpptm)) {
 			// Standard transaction demarcation with getTransaction and commit/rollback calls.
-                    //创建事务或者加入事务
+                        //创建事务或者加入事务
 			TransactionInfo txInfo = createTransactionIfNecessary(ptm, txAttr, joinpointIdentification);
 			Object retVal;
 			try {
 				// This is an around advice: Invoke the next interceptor in the chain.
 				// This will normally result in a target object being invoked.
-                    //目标方法或者拦截器链的下一个拦截器
+                        //目标方法或者拦截器链的下一个拦截器
 				retVal = invocation.proceedWithInvocation();
 			}
 			catch (Throwable ex) {
 				// target invocation exception
-                    //回滚或提交
+                        //回滚或提交
 				completeTransactionAfterThrowing(txInfo, ex);
 				throw ex;
 			}
 			finally {
-                //清理事务信息
+                        //清理事务信息
 				cleanupTransactionInfo(txInfo);
 			}
-                //事务提交
+                        //事务提交
 			commitTransactionAfterReturning(txInfo);
 			return retVal;
 		}
@@ -264,6 +264,7 @@ author: zouhuanli
 		if (StringUtils.hasText(qualifier)) {
 			return determineQualifiedTransactionManager(this.beanFactory, qualifier);
 		}
+                        //transactionManagerBeanName=transactionManager,springmvcdemo-db.xml配置的事务管理器的name
 		else if (StringUtils.hasText(this.transactionManagerBeanName)) {
 			return determineQualifiedTransactionManager(this.beanFactory, this.transactionManagerBeanName);
 		}
@@ -324,7 +325,7 @@ private TransactionManager determineQualifiedTransactionManager(BeanFactory bean
 	}
 ```
 
-得到事务管理器我们解析阅读创建事务的方法。
+得到事务管理器后我们开始解析阅读创建事务的方法。
 
 ## 3.创建事务createTransactionIfNecessary
 
@@ -345,7 +346,7 @@ protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransac
 		TransactionStatus status = null;
 		if (txAttr != null) {
 			if (tm != null) {
-                //通过事务管理器创建事务
+                            //通过事务管理器创建事务
 				status = tm.getTransaction(txAttr);
 			}
 			else {
@@ -355,11 +356,11 @@ protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransac
 				}
 			}
 		}
-        //获得事务信息TransactionInfo
+                        //获得事务信息TransactionInfo
 		return prepareTransactionInfo(tm, txAttr, joinpointIdentification, status);
 	}
 ```
-我们看下在事务状态TransactionStatus(事务管理器返回的事务对象)上一层的包装对象TransactionInfo(在TransactionInterceptor的内部对象)。
+我们看下在事务状态在TransactionStatus(事务管理器TransactionManager返回的事务对象)上一层的包装对象TransactionInfo(在TransactionInte<br>rceptor的内部事务对象)。
 ```java
 
 	/**
@@ -382,32 +383,8 @@ protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransac
 		@Nullable
 		private TransactionInfo oldTransactionInfo;
 
-		public TransactionInfo(@Nullable PlatformTransactionManager transactionManager,
-				@Nullable TransactionAttribute transactionAttribute, String joinpointIdentification) {
-
-			this.transactionManager = transactionManager;
-			this.transactionAttribute = transactionAttribute;
-			this.joinpointIdentification = joinpointIdentification;
-		}
-
-		public PlatformTransactionManager getTransactionManager() {
-			Assert.state(this.transactionManager != null, "No PlatformTransactionManager set");
-			return this.transactionManager;
-		}
-
-		@Nullable
-		public TransactionAttribute getTransactionAttribute() {
-			return this.transactionAttribute;
-		}
-
-		/**
-		 * Return a String representation of this joinpoint (usually a Method call)
-		 * for use in logging.
-		 */
-		public String getJoinpointIdentification() {
-			return this.joinpointIdentification;
-		}
-
+        
+                            //设置事务对象TransactionStatus
 		public void newTransactionStatus(@Nullable TransactionStatus status) {
 			this.transactionStatus = status;
 		}
@@ -448,11 +425,12 @@ protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransac
 
 ![txInfo](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-19-spring_source_code_reading_18/txInfo.png)
 
-获得事务后，开始执行目标方法或者拦截器链的方法“retVal = invocation.proceedWithInvocation()”。得到执行结果retVal。<br>
+获得事务后，开始执行目标方法或者拦截器链的方法“retVal = invocation.proceedWithInvocation()”。得到执行结果retVal后，<br>
 若抛出异常则进入completeTransactionAfterThrowing方法，正常返回则执行commitTransactionAfterReturning。<br>
 我们开始阅读completeTransactionAfterThrowing方法。<br>
 
 ## 3.异常处理completeTransactionAfterThrowing
+
 ```java
 protected void completeTransactionAfterThrowing(@Nullable TransactionInfo txInfo, Throwable ex) {
 		if (txInfo != null && txInfo.getTransactionStatus() != null) {
@@ -509,6 +487,7 @@ protected void completeTransactionAfterThrowing(@Nullable TransactionInfo txInfo
 ## 4.正常结果处理commitTransactionAfterReturning
 
  这里就很简单了，直接使用事务管理器的提交操作。
+
 ```java
 protected void commitTransactionAfterReturning(@Nullable TransactionInfo txInfo) {
 		if (txInfo != null && txInfo.getTransactionStatus() != null) {
@@ -521,17 +500,17 @@ protected void commitTransactionAfterReturning(@Nullable TransactionInfo txInfo)
 
 ```
 
+
 这里简单总结一下，事务拦截器主要是拦截目标方法，执行增强处理逻辑，添加增强处理逻辑之后的事务处理逻辑主要是：<br>
 1.获得事务属性。<br>
 2.获得事务管理器。<br>
 3.创建/加入事务。<br>
-4.执行目标方法或者拦截器链路的下一个拦截器。<br>
+4.执行目标方法或者拦截器链的下一个拦截器。<br>
 5.异常处理：回滚或者提交。<br>
 6.正常结果处理：提交事务。<br>
 
-本篇文章中经常提及到的事务管理器TransactionManager是托管事务对象的核心类，提供新建事务、提交事务、回滚事务、唤醒事务、挂起事务等核心的事务方
-法，TransactionStatus就是事务对象，TransactionDefinition是事务定义信息/事务属性，TransactionAttribute事务属性是
-TransactionDefinition的子类。
+本篇文章中经常提及到的事务管理器TransactionManager是托管事务对象的核心类，提供新建事务、提交事务、回滚事务、唤醒事务、挂起事务等核心的事务方法，
+TransactionStatus就是事务对象，TransactionDefinition是事务定义信息/事务属性，TransactionAttribute事务属性是TransactionDefinition的子类。
 
 # 二、参考材料
 
