@@ -60,9 +60,9 @@ author: zouhuanli
                         //获得事务属性
 		TransactionAttributeSource tas = getTransactionAttributeSource();
 		final TransactionAttribute txAttr = (tas != null ? tas.getTransactionAttribute(method, targetClass) : null);
-                        //获得事物管理器
+                        //获得事务管理器
 		final TransactionManager tm = determineTransactionManager(txAttr);
-                        //reactive栈的事物切面处理，这里先忽略
+                        //reactive栈的事务切面处理，这里先忽略
 		if (this.reactiveAdapterRegistry != null && tm instanceof ReactiveTransactionManager rtm) {
 			boolean isSuspendingFunction = KotlinDetector.isSuspendingFunction(method);
 			boolean hasSuspendingFlowReturnType = isSuspendingFunction &&
