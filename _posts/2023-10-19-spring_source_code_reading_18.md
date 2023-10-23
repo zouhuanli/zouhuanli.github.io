@@ -360,7 +360,7 @@ protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransac
 		return prepareTransactionInfo(tm, txAttr, joinpointIdentification, status);
 	}
 ```
-我们看下在事务状态在TransactionStatus(事务管理器TransactionManager返回的事务对象)上一层的包装对象TransactionInfo(在TransactionInte<br>rceptor的内部事务对象)。
+我们看下在事务状态在TransactionStatus(事务管理器TransactionManager返回的事务对象)上一层的包装对象TransactionInfo(在TransactionInterceptor的内部事务对象)。
 ```java
 
 	/**
@@ -376,7 +376,7 @@ protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransac
 		private final TransactionAttribute transactionAttribute;
                     //切入点
 		private final String joinpointIdentification;
-                    //事务状态对象，就是事务对象，有事务管理器TransactionManager返回的
+                    //事务状态对象，就是事务对象，由事务管理器TransactionManager返回的
 		@Nullable
 		private TransactionStatus transactionStatus;
                     //TransactionInfo，在TransactionInterceptor的内部对象
@@ -499,6 +499,7 @@ protected void commitTransactionAfterReturning(@Nullable TransactionInfo txInfo)
 	}
 
 ```
+
 
 
 这里简单总结一下，事务拦截器主要是拦截目标方法，执行增强处理逻辑，添加增强处理逻辑之后的事务处理逻辑主要是：<br>
