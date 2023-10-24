@@ -9,7 +9,7 @@ author: zouhuanli
 
 本文是Spring源码阅读计划的第十八篇文章，本文着重解读事务拦截器TransactionInterceptor。<br>
 上一篇已经解读了事务属性和事务切面Advisor(Pointcut+Advice)对象的解析和注册流程，本篇开始解读事务拦截器TransactionInterceptor对普通的数
-据库操作语句方法的增强处理,TransactionInterceptor是事务处理的核心类。
+据库操作语句方法的增强处理,TransactionInterceptor是事务切面处理的核心类。
 
 本文源码地址为:[https://github.com/zouhuanli/SpringMvcDemo.git](https://github.com/zouhuanli/SpringMvcDemo.git).<br>
 
