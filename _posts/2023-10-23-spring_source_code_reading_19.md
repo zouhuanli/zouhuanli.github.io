@@ -241,7 +241,7 @@ txObject.getConnectionHolder().setTransactionActive(true);
 		return status;
 	}
 ```
-这里分为三步：创建事务状态对象、开启事新务、同步/绑定事务信息到线程。<br>
+这里分为三步：创建事务状态对象、开启新事务、同步/绑定事务信息到线程。<br>
 创建事务状态方法如下：
 ```java
 
