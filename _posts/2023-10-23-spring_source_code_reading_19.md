@@ -810,7 +810,7 @@ private void processCommit(DefaultTransactionStatus status) throws TransactionEx
 很显然，这里也是调用Connection的rollback方法。<br>
 
 
-这里对事务管理做一下简单的总结：是Spring托管事务的核心对象，主要提供获取事务、提交事务、回滚事务等方法，这三个方法最终还是落地到Connection对象<br>去操作，在三个方法前后各个正常或者异常情况插入了大量拓展点由子类去实现。首先要从TransactionManager顶层设计去理解三个顶层的开放方法，其次要关注<br>获得事务、提交事务、回滚事务等操作时候的同步资源的状态，如绑定到线程、解除绑定到线程等。
+这里对事务管理器做一下简单的总结：是Spring托管事务的核心对象，主要提供获取事务、提交事务、回滚事务等方法，这三个方法最终还是落地到Connection对象<br>去操作，在三个方法前后各个正常或者异常情况插入了大量拓展点由子类去实现。首先要从TransactionManager顶层设计去理解三个顶层的开放方法，其次要关注<br>获得事务、提交事务、回滚事务等操作时候的同步资源的状态，如绑定到线程、解除绑定到线程等。
 
 # 五、参考材料
 
