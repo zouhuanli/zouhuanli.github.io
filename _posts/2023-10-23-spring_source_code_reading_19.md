@@ -18,7 +18,7 @@ author: zouhuanli
 ## 1、顶层设计类
 
 首先要把握三个顶层设计的接口：
-1.PlatformTransactionManager:平台事务管理器，提供获得事务、提交事务、回滚事务这些操作的核心接口，继承自TransactionManager这个空接口。
+1.PlatformTransactionManager:平台事务管理器，提供获得事务、提交事务、回滚事务这些操作的核心接口，继承自TransactionManager这个空接口。<br>
 我们阅读源码，这个接口就提供了三个顶层方法：
 ```java
 public interface PlatformTransactionManager extends TransactionManager {
@@ -98,10 +98,10 @@ public interface PlatformTransactionManager extends TransactionManager {
 }
 
 ```
-2.TransactionStatus：事务状态，包含事务对象TransactionObject、是否新事务、是否只读、挂起资源、保存点等，指的是一个事务对象相关的所有信息。
-3.TransactionDefinition：事务配置/定义信息，如事务名字、隔离级别、传播级别、回滚规则等，之前已经解读过了。
+2.TransactionStatus：事务状态，包含事务对象TransactionObject、是否新事务、是否只读、挂起资源、保存点等，指的是一个事务对象相关的所有信息。<br>
+3.TransactionDefinition：事务配置/定义信息，如事务名字、隔离级别、传播级别、回滚规则等，之前已经解读过了。<br>
 
-我们看下这三个类的类继承关系图。
+我们看下这三个类的类继承关系图。<br>
 PlatformTransactionManager事务管理器:
 
 ![DataSourceTransactionManager](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-23-spring_source_code_reading_19/DataSourceTransactionManager.png)
@@ -119,7 +119,7 @@ TransactionDefinition事务配置信息：
 除去上面三个顶层接口之外，在阅读源码之后笔者这提出一些需要关注的其他类或者接口。<br>
 1.DataSourceTransactionObject：事务对象，是事务状态对象TransactionStatus内部持有的事务对象。<br>
 
-2.ConnectionHolder：数据库连接持有者。源码如下：
+2.ConnectionHolder：数据库连接持有者。源码如下：<br>
 ```java
 public class ConnectionHolder extends ResourceHolderSupport {
 
@@ -149,7 +149,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 
 # 二、获取事务
 
-我们从PlatformTransactionManager#getTransaction作为入口开始阅读。
+我们从PlatformTransactionManager#getTransaction作为入口开始阅读。<br>
 ```java
 @Override
 	public final TransactionStatus getTransaction(@Nullable TransactionDefinition definition)
@@ -205,7 +205,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 		}
 	}
 ```
-从返回结果语句很容易看出来这里有三条执行路径：加入现有事务、新创建事务、创建空事务。
+从返回结果语句很容易看出来这里有三条执行路径：加入现有事务、新创建事务、创建空事务。<br>
 而判断当前是否存在事务的方法如下：
 ```java
 @Override
@@ -214,7 +214,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 		return (txObject.hasConnectionHolder() && txObject.getConnectionHolder().isTransactionActive());
 	}
 ```
-判断事务对象是否持有数据库连接以及连接是否已经激活。这两个操作在startTransaction方法内，进入doBegin方法的这两行：
+判断事务对象是否持有数据库连接以及连接是否已经激活。这两个操作在startTransaction方法内，进入doBegin方法的这两行：<br>
 ```java
 txObject.setConnectionHolder(new ConnectionHolder(newCon), true);
 //.....
@@ -241,7 +241,7 @@ txObject.getConnectionHolder().setTransactionActive(true);
 		return status;
 	}
 ```
-这里分为三步：创建事务状态对象、开启事新务、同步/绑定事务信息到线程。
+这里分为三步：创建事务状态对象、开启事新务、同步/绑定事务信息到线程。<br>
 创建事务状态方法如下：
 ```java
 
@@ -325,7 +325,7 @@ DataSourceTransactionManager#doBegin方法如下：
 	}
 ```
 
-准备同步信息,这里主要将事务状态、事务定义/配置信息存入线程本地变量，绑定到当前线程
+准备同步信息,这里主要将事务状态、事务定义/配置信息存入线程本地变量，绑定到当前线程。
 ```java
 /**
 	 * Initialize transaction synchronization as appropriate.
@@ -348,7 +348,7 @@ DataSourceTransactionManager#doBegin方法如下：
 ## 2.已存在事务的处理
 
 ### 2.1 handleExistingTransaction方法
-我们继续阅读handleExistingTransaction这个方法,很明显，我们这里看到Spring事务传播机制的实现代码。事务传播机制是Spring自己的，不是MySQL或
+我们继续阅读handleExistingTransaction这个方法,很明显，我们这里看到Spring事务传播机制的实现代码。事务传播机制是Spring自己的，不是MySQL或<br>
 其他数据库拥有的。
 
 ```java
@@ -447,6 +447,7 @@ DataSourceTransactionManager#doBegin方法如下：
 ```
 
 这里我们解读一下PROPAGATION_REQUIRES_NEW新建事务的流程。
+
 ```java
             SuspendedResourcesHolder suspendedResources = suspend(transaction);
 			try {
@@ -457,6 +458,7 @@ DataSourceTransactionManager#doBegin方法如下：
 ### 2.2 suspend挂起资源方法
 
 首先看下挂起方法：
+
 ```java
 @Nullable
 	protected final SuspendedResourcesHolder suspend(@Nullable Object transaction) throws TransactionException {
@@ -499,8 +501,8 @@ DataSourceTransactionManager#doBegin方法如下：
 	}
 ```
 
-这里我们看到主要是真正的挂起方法doSuspend，以及移除TransactionSynchronizationManager的绑定的事务信息保存在SuspendedResourcesHolder
-挂起资源持有者这个对象上,然后返回给外部使用。
+这里我们看到主要是真正的挂起方法doSuspend，以及移除TransactionSynchronizationManager的绑定的事务信息保存在SuspendedResourcesHolder<br>
+挂起资源持有者这个对象上,然后返回给外部使用。<br>
 
 而DataSourceTransactionManager#doSuspend方法如下：
 ```java
@@ -511,13 +513,13 @@ DataSourceTransactionManager#doBegin方法如下：
 		return TransactionSynchronizationManager.unbindResource(obtainDataSource());
 	}
 ```
-这里也是解除绑定线程上的资源，此处是key=dataSource，value=Connection的数据。
+这里也是解除绑定线程上的资源，此处是key=dataSource，value=Connection的数据。<br>
 
-阅读完挂起资源方法，我们开始阅读一些resume唤醒资源方法。
+阅读完挂起资源方法，我们开始阅读一些resume唤醒资源方法。<br>
 
 ### 2.3 resume唤醒挂起资源的方法
 
-resume唤醒挂起资源的方法，会在创建事务startTransaction执行异常时候内执行，和正常完成提交和回滚之后最后的cleanupAfterCompletion内执行。
+resume唤醒挂起资源的方法，会在创建事务startTransaction执行异常时候内执行，和正常完成提交和回滚之后最后的cleanupAfterCompletion内执行。<br>
 我们看下resume方法:
 ```java
 protected final void resume(@Nullable Object transaction, @Nullable SuspendedResourcesHolder resourcesHolder)
@@ -539,8 +541,8 @@ protected final void resume(@Nullable Object transaction, @Nullable SuspendedRes
 		}
 	}
 ```
-这里是做了suspend的逆操作了,doResume把挂起资源重新绑定到线程了，suspendedSynchronizations也把事务信息wasActive、isolationLevel、
-readOnly等重新绑定到TransactionSynchronizationManager的线程本地变量绑定到线程上。
+这里是做了suspend的逆操作了,doResume把挂起资源重新绑定到线程了，suspendedSynchronizations也把事务信息wasActive、isolationLevel、<br>
+readOnly等重新绑定到TransactionSynchronizationManager的线程本地变量绑定到线程上。<br>
 DataSourceTransactionManager#doResume如下：
 ```java
 @Override
@@ -573,13 +575,14 @@ TransactionSynchronization#suspend，TransactionSynchronization#resume都是预�
       }
     }
 ```
-而注册自定义同步资源是由TransactionSynchronizationManager#registerSynchronization添加资源进入到synchronizations这个集合。
+而注册自定义同步资源是由TransactionSynchronizationManager#registerSynchronization添加资源进入到synchronizations这个集合。<br>
 
-下面开始阅读提交事务和回滚事务的源码,commit和rollback方法要比getTransaction简单很多。
+下面开始阅读提交事务和回滚事务的源码,commit和rollback方法要比getTransaction简单很多。<br>
 
 # 三、提交事务
 
 提交事务方法如下：
+
 ```java
 @Override
 	public final void commit(TransactionStatus status) throws TransactionException {
@@ -609,7 +612,9 @@ TransactionSynchronization#suspend，TransactionSynchronization#resume都是预�
 		processCommit(defStatus);
 	}
 ```
+
 继续进入processCommit方法：
+
 ```java
 private void processCommit(DefaultTransactionStatus status) throws TransactionException {
 		try {
@@ -692,7 +697,8 @@ private void processCommit(DefaultTransactionStatus status) throws TransactionEx
 		}
 	}
 ```
-我们继续阅读DataSourceTransactionManager#doCommit方法，这里依旧是调用Connection的方法：
+
+我们继续阅读DataSourceTransactionManager#doCommit方法，这里依旧是调用Connection的方法：<br>
 
 ```java
 	@Override
@@ -715,6 +721,7 @@ private void processCommit(DefaultTransactionStatus status) throws TransactionEx
 # 四、回滚事务
 
 回滚事务方法和提交释放方法的结构很像，都是核心方法前后插入大量的拓展点方法，最后是清理资源，运用了模板方法。
+
 ```java
 /**
 	 * Process an actual rollback.
@@ -783,7 +790,9 @@ private void processCommit(DefaultTransactionStatus status) throws TransactionEx
 		}
 	}
 ```
+
 这里我们直接进入doRollback方法：
+
 ```java
 @Override
 	protected void doRollback(DefaultTransactionStatus status) {
@@ -800,11 +809,11 @@ private void processCommit(DefaultTransactionStatus status) throws TransactionEx
 		}
 	}
 ```
-很显然，这里也是调用Connection的rollback方法。
+很显然，这里也是调用Connection的rollback方法。<br>
 
 
-这里对事务管理做一下简单的总结：是Spring托管事务的核心对象，主要提供获取事务、提交事务、回滚事务等方法，这三个方法最终还是落地到Connection对象
-去操作，在三个方法前后各个正常或者异常情况插入了大量拓展点由子类去实现。首先要从TransactionManager顶层设计去理解三个顶层的开放方法，其次要关注
+这里对事务管理做一下简单的总结：是Spring托管事务的核心对象，主要提供获取事务、提交事务、回滚事务等方法，这三个方法最终还是落地到Connection对象<br>
+去操作，在三个方法前后各个正常或者异常情况插入了大量拓展点由子类去实现。首先要从TransactionManager顶层设计去理解三个顶层的开放方法，其次要关注<br>
 获得事务、提交事务、回滚事务等操作时候的同步资源的状态，如绑定到线程、解除绑定到线程等。
 
 # 五、参考材料
