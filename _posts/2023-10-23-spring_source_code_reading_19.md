@@ -307,7 +307,7 @@ DataSourceTransactionManager#doBegin方法如下：
 			}
 
 			// Bind the connection holder to the thread.
-                                //主要这里，绑定连接持有者ConnectionHolder到TransactionSynchronizationManager.resources这个线程本地变量
+                                //注意这里，绑定连接持有者ConnectionHolder到TransactionSynchronizationManager.resources这个线程本地变量
                                 //resources是一个Map，key是dataSource,value是ConnectionHolder
                                 //ConnectionHolder是Connection的包装类型。这里简化理解为绑定连接到当前线程
 			if (txObject.isNewConnectionHolder()) {
@@ -326,6 +326,7 @@ DataSourceTransactionManager#doBegin方法如下：
 ```
 
 准备同步信息,这里主要将事务状态、事务定义/配置信息存入线程本地变量，绑定到当前线程。
+
 ```java
 /**
 	 * Initialize transaction synchronization as appropriate.
@@ -348,8 +349,7 @@ DataSourceTransactionManager#doBegin方法如下：
 ## 2.已存在事务的处理
 
 ### 2.1 handleExistingTransaction方法
-我们继续阅读handleExistingTransaction这个方法,很明显，我们这里看到Spring事务传播机制的实现代码。事务传播机制是Spring自己的，不是MySQL或<br>
-其他数据库拥有的。
+我们继续阅读handleExistingTransaction这个方法,很明显，我们这里看到Spring事务传播机制的实现代码。事务传播机制是Spring自己的，不是MySQL或<br>其他数据库拥有的。
 
 ```java
 /**
@@ -501,8 +501,7 @@ DataSourceTransactionManager#doBegin方法如下：
 	}
 ```
 
-这里我们看到主要是真正的挂起方法doSuspend，以及移除TransactionSynchronizationManager的绑定的事务信息保存在SuspendedResourcesHolder<br>
-挂起资源持有者这个对象上,然后返回给外部使用。<br>
+这里我们看到主要是真正的挂起方法doSuspend，以及移除TransactionSynchronizationManager的绑定的事务信息保存在SuspendedResourcesHolder<br>挂起资源持有者这个对象上,然后返回给外部使用。<br>
 
 而DataSourceTransactionManager#doSuspend方法如下：
 ```java
@@ -541,8 +540,7 @@ protected final void resume(@Nullable Object transaction, @Nullable SuspendedRes
 		}
 	}
 ```
-这里是做了suspend的逆操作了,doResume把挂起资源重新绑定到线程了，suspendedSynchronizations也把事务信息wasActive、isolationLevel、<br>
-readOnly等重新绑定到TransactionSynchronizationManager的线程本地变量绑定到线程上。<br>
+这里是做了suspend的逆操作了,doResume把挂起资源重新绑定到线程了，suspendedSynchronizations也把事务信息wasActive、isolationLevel、<br>readOnly等重新绑定到TransactionSynchronizationManager的线程本地变量绑定到线程上。<br>
 DataSourceTransactionManager#doResume如下：
 ```java
 @Override
@@ -550,7 +548,7 @@ DataSourceTransactionManager#doResume如下：
 		TransactionSynchronizationManager.bindResource(obtainDataSource(), suspendedResources);
 	}
 ```
-TransactionSynchronization#suspend，TransactionSynchronization#resume都是预留的拓展方法，允许子类自定义同步资源。<br>
+TransactionSynchronization#suspend,TransactionSynchronization#resume都是预留的拓展方法，允许子类自定义同步资源并加托管到TransactionSynchronizationManager。<br>
 如Mybatis的SqlSessionSynchronization：
 ```java
   /**
@@ -812,9 +810,7 @@ private void processCommit(DefaultTransactionStatus status) throws TransactionEx
 很显然，这里也是调用Connection的rollback方法。<br>
 
 
-这里对事务管理做一下简单的总结：是Spring托管事务的核心对象，主要提供获取事务、提交事务、回滚事务等方法，这三个方法最终还是落地到Connection对象<br>
-去操作，在三个方法前后各个正常或者异常情况插入了大量拓展点由子类去实现。首先要从TransactionManager顶层设计去理解三个顶层的开放方法，其次要关注<br>
-获得事务、提交事务、回滚事务等操作时候的同步资源的状态，如绑定到线程、解除绑定到线程等。
+这里对事务管理做一下简单的总结：是Spring托管事务的核心对象，主要提供获取事务、提交事务、回滚事务等方法，这三个方法最终还是落地到Connection对象<br>去操作，在三个方法前后各个正常或者异常情况插入了大量拓展点由子类去实现。首先要从TransactionManager顶层设计去理解三个顶层的开放方法，其次要关注<br>获得事务、提交事务、回滚事务等操作时候的同步资源的状态，如绑定到线程、解除绑定到线程等。
 
 # 五、参考材料
 
