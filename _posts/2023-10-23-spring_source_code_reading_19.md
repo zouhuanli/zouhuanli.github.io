@@ -17,7 +17,7 @@ author: zouhuanli
 # 一、整体概览
 ## 1、顶层设计类
 
-首先要把握三个顶层设计的接口：
+首先要把握三个顶层设计的接口：<br>
 1.PlatformTransactionManager:平台事务管理器，提供获得事务、提交事务、回滚事务这些操作的核心接口，继承自TransactionManager这个空接口。<br>
 我们阅读源码，这个接口就提供了三个顶层方法：
 ```java
