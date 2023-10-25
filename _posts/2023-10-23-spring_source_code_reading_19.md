@@ -145,7 +145,30 @@ public class ConnectionHolder extends ResourceHolderSupport {
 ```
 
 3.TransactionSynchronizationManager:事务同步信息的管理器，将事务信息绑定到执行线程。<br>
-4.TransactionSynchronization:事务同步信息，允许自定义资源托管到TransactionSynchronizationManager。<br>
+```java
+public abstract class TransactionSynchronizationManager {
+                                //将事务相关资源绑定到线程
+    private static final ThreadLocal<Map<Object, Object>> resources =
+            new NamedThreadLocal<>("Transactional resources");
+
+    private static final ThreadLocal<Set<TransactionSynchronization>> synchronizations =
+            new NamedThreadLocal<>("Transaction synchronizations");
+
+    private static final ThreadLocal<String> currentTransactionName =
+            new NamedThreadLocal<>("Current transaction name");
+
+    private static final ThreadLocal<Boolean> currentTransactionReadOnly =
+            new NamedThreadLocal<>("Current transaction read-only status");
+
+    private static final ThreadLocal<Integer> currentTransactionIsolationLevel =
+            new NamedThreadLocal<>("Current transaction isolation level");
+
+    private static final ThreadLocal<Boolean> actualTransactionActive =
+            new NamedThreadLocal<>("Actual transaction active");
+}
+```
+
+4.TransactionSynchronization:事务同步信息，允许自定义资源托管到TransactionSynchronizationManager。如Mybatis的SqlSessionSynchronization。<br>
 
 # 二、获取事务
 
@@ -349,7 +372,7 @@ DataSourceTransactionManager#doBegin方法如下：
 ## 2.已存在事务的处理
 
 ### 2.1 handleExistingTransaction方法
-我们继续阅读handleExistingTransaction这个方法,很明显，我们这里看到Spring事务传播机制的实现代码。事务传播机制是Spring自己的，不是MySQL或<br>其他数据库拥有的。
+我们继续阅读handleExistingTransaction这个方法,很明显，我们这里看到Spring事务传播机制的实现代码。事务传播机制是Spring自己的，不是MySQL或其他数据库拥有的。
 
 ```java
 /**
@@ -501,7 +524,7 @@ DataSourceTransactionManager#doBegin方法如下：
 	}
 ```
 
-这里我们看到主要是真正的挂起方法doSuspend，以及移除TransactionSynchronizationManager的绑定的事务信息保存在SuspendedResourcesHolder<br>挂起资源持有者这个对象上,然后返回给外部使用。<br>
+这里我们看到主要是真正的挂起方法doSuspend，以及移除TransactionSynchronizationManager的绑定的事务信息保存到SuspendedResourcesHolder<br>挂起资源持有者这个对象上,然后返回给外部使用。<br>
 
 而DataSourceTransactionManager#doSuspend方法如下：
 ```java
@@ -540,14 +563,17 @@ protected final void resume(@Nullable Object transaction, @Nullable SuspendedRes
 		}
 	}
 ```
-这里是做了suspend的逆操作了,doResume把挂起资源重新绑定到线程了，suspendedSynchronizations也把事务信息wasActive、isolationLevel、<br>readOnly等重新绑定到TransactionSynchronizationManager的线程本地变量绑定到线程上。<br>
+
+这里是做了suspend的逆操作,doResume把挂起资源重新绑定到线程，setXXX把事务信息重新绑定到线程，suspendedSynchronizations把自定义的事务同步资源重新绑定到TransactionSynchronizationManager的线程本地变量从而绑定到线程上。<br>
 DataSourceTransactionManager#doResume如下：
+
 ```java
 @Override
 	protected void doResume(@Nullable Object transaction, Object suspendedResources) {
 		TransactionSynchronizationManager.bindResource(obtainDataSource(), suspendedResources);
 	}
 ```
+
 TransactionSynchronization#suspend,TransactionSynchronization#resume都是预留的拓展方法，允许子类自定义同步资源并加托管到TransactionSynchronizationManager。<br>
 如Mybatis的SqlSessionSynchronization：
 ```java
@@ -738,12 +764,14 @@ private void processCommit(DefaultTransactionStatus status) throws TransactionEx
 					if (status.isDebug()) {
 						logger.debug("Rolling back transaction to savepoint");
 					}
+                                     //回滚到保存点，也是调用Connection的回滚到保存点方法
 					status.rollbackToHeldSavepoint();
 				}
 				else if (status.isNewTransaction()) {
 					if (status.isDebug()) {
 						logger.debug("Initiating transaction rollback");
 					}
+                                    //数据库回滚
 					doRollback(status);
 				}
 				else {
