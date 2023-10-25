@@ -64,7 +64,7 @@ public class NewVirtualThreadPerTaskExecutorDemo {
 
 }
 ```
-注意看一下上面打印的实时间：
+注意看一下上面打印的时间：
 ```text
  /***
          * Hello, World!
@@ -85,7 +85,7 @@ public class NewVirtualThreadPerTaskExecutorDemo {
 换句话说，虚拟线程可以显着提高应用程序吞吐量当并发任务数较高（数千以上），并且工作负载不受 CPU 限制，因为在这种情况下，线程数多于处理器核心数无法提高吞吐量。
 虚拟线程有助于提高典型服务器应用程序的吞吐量，正是因为此类应用程序由大量并发任务组成，而这些任务大部分时间都在等待。
 ```
-一下其他的基本用法：
+看一下其他的基本用法：
 ```java
         t.setDaemon(true);
         t.start();
@@ -96,7 +96,7 @@ public class NewVirtualThreadPerTaskExecutorDemo {
         System.out.println(t.getThreadGroup());
         System.out.println(t.getPriority());
 ```
-虚拟线程总是收获线程，虚拟线程有正常5的优先级且无法设置优先级，虚拟线程的Thread.getThreadGroup()返回“VirtualThreads”。<br>
+虚拟线程总是守护线程，虚拟线程有正常5的优先级且无法设置优先级，虚拟线程的Thread.getThreadGroup()返回“VirtualThreads”。<br>
 Thread.getAllStackTraces()现在返回所有平台线程的映射，而不是所有线程的映射。
 
 虚拟线程支持支持sync关键字，测试如下：
@@ -149,6 +149,7 @@ public class ThreadLocalDemo {
 }
 ```
 # 三.阻塞和调度
+
 关于阻塞,看下文章原文：
 ```text
 When code running in a virtual thread calls a blocking I/O operation in the java.* API, the runtime performs a non-blocking OS calland automatically suspends the virtual thread until it can be resumed later.
@@ -183,3 +184,5 @@ JDK的虚拟线程调度程序是一个ForkJoinPool以先进先出（FIFO）模�
 虚拟线程是轻量级线程，主要提高吞吐量而不是延迟，适合用于IO密集场景，对计算密集CPU密集的任务无明显改善，对于CPU密集、CPU长时间运行的任务增加虚拟线程或者平台线程无帮助。
 
 # 四、参考材料
+
+JEP444-虚拟线程的介绍[https://openjdk.org/jeps/444](https://openjdk.org/jeps/444)
