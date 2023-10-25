@@ -13,7 +13,7 @@ Notes地址为[https://www.oracle.com/java/technologies/javase/21-relnote-issues
 以及在OpenJDK网站的JEP444-虚拟线程的介绍[https://openjdk.org/jeps/444](https://openjdk.org/jeps/444)。<br>
 本文主要解读一下OpenJDK关于虚拟线程介绍的这个文章，以及简单使用一下虚拟线程。建议读者也读一下这篇文章。
 
-本文源码地址为:[https://github.com/zouhuanli/SpringMvcDemo.git](https://github.com/zouhuanli/SpringMvcDemo.git).<br>
+本文源码地址为:[https://github.com/zouhuanli/jdk21demo.git](https://github.com/zouhuanli/jdk21demo.git).<br>
 
 # 一、概述
 
