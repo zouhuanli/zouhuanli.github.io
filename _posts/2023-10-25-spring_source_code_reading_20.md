@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文是Spring源码阅读计划的第二十篇文章，本文简单解读一下BeanFactoryPostProcessor这个类。<br>
+本文是Spring源码阅读计划的第二十篇文章，本文简单解读一下BeanFactoryPostProcessor这个类,算是对Spring IoC容器(BeanFactory)初始流程的一个补充解读<br>
 BeanFactoryPostProcessor是在BeanFactory创建和初始化之后执行的容器级别后置处理器，之前解读IoC容器初始化流程(以及AnnotationConfigApplicationContext)中
 有这个invokeBeanFactoryPostProcessors方法，调用beanFactory的后置处理器:
 
