@@ -9,7 +9,7 @@ author: zouhuanli
 
 本文是Spring源码阅读计划的第二十篇文章，本文简单解读一下BeanFactoryPostProcessor这个类。<br>
 BeanFactoryPostProcessor是在BeanFactory创建和初始化之后执行的容器级别后置处理器，之前解读IoC容器初始化流程(以及AnnotationConfigApplicationContext)中
-由这个invokeBeanFactoryPostProcessors方法，调用beanFactory的后置处理器:
+有这个invokeBeanFactoryPostProcessors方法，调用beanFactory的后置处理器:
 
 ```java
 
@@ -18,7 +18,7 @@ BeanFactoryPostProcessor是在BeanFactory创建和初始化之后执行的容器
 				invokeBeanFactoryPostProcessors(beanFactory);
 ```
 在之前的这篇文[AnnotationConfigApplicationContext初始化流程](https://zouhuanli.github.io/spring_source_code_reading_5/)有提及到,
-在invokeBeanDefinitionRegistryPostProcessors方法调用了解析注解注册的BeanDefinition等信息，本文重点介绍一下BeanFactoryPostProcessor。
+在invokeBeanDefinitionRegistryPostProcessors这个方法解析了注解注册的BeanDefinition等信息，本文重点介绍一下BeanFactoryPostProcessor。
 本文源码地址为:[https://github.com/zouhuanli/SpringMvcDemo.git](https://github.com/zouhuanli/SpringMvcDemo.git).<br>
 
 # 一、概述
@@ -46,7 +46,7 @@ public interface BeanFactoryPostProcessor {
 
 这里主要有两类：PropertyResourceConfigurer，获取配置资源的配置项的值。<br>
              BeanDefinitionRegistryPostProcessor,如ConfigurationClassPostProcessor，注册Bean信息的后置处理器。<br>
-在解读AnnotationConfigApplicationContext的初始化流程那里，是通过BeanDefinitionRegistryPostProcessor来解析和注册注解的bean信息的。
+在解读AnnotationConfigApplicationContext的初始化流程那里，是通过BeanDefinitionRegistryPostProcessor来解析和注册注解引入的bean信息的。
 
 
 # 二、简单使用
@@ -93,7 +93,7 @@ public class AnnotationContextTest {
 }
 
 ```
-执行纪录如下,具体参考GitHub项目的源码：
+执行纪录如下,具体代码参考GitHub项目的源码：
 ```java
 2023-10-26 21:42:19,799|TRACE|AbstractAutowireCapableBeanFactory.java:522 |main|Finished creating instance of bean 'org.springframework.transaction.config.internalTransactionalEventListenerFactory'
 2023-10-26 21:42:19,799|INFO |MyBeanFactoryPostProcessor.java:22  |main|MyBeanFactoryPostProcessor.postProcessBeanFactory
@@ -109,9 +109,9 @@ public class AnnotationContextTest {
 ```
 这里注入了配置项的配置值。<br>
 以及MapperScannerConfigurer#postProcessBeanDefinitionRegistry会在PostProcessorRegistrationDelegate#invokeBeanFactoryPostProcessors内调用，
-用户完成扫描mapper信息并住处mapper信息。<br>
+用以完成扫描mapper信息并注册mapper信息。<br>
 
-回到Spring Framework自身的源码,PropertyResourceConfigurer不再解读，我们主要看下BeanDefinitionRegistryPostProcessor。
+回到Spring Framework自身的源码,PropertyResourceConfigurer笔者这里不再解读，我们主要看下BeanDefinitionRegistryPostProcessor。
 
 ```java
 public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProcessor {
@@ -213,6 +213,7 @@ public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProc
 		Set<ConfigurationClass> alreadyParsed = new HashSet<>(configCandidates.size());
 		do {
 			StartupStep processConfig = this.applicationStartup.start("spring.context.config-classes.parse");
+                                //解析 @Configuration类以及其引入的@Bean, @Import，@ComponentScan等引入的Bean信息
 			parser.parse(candidates);
 			parser.validate();
 
@@ -363,7 +364,7 @@ public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProc
 
 ```
 很明显，这里注册了@ComponentScan、@ImportResource、@Bean 等注解注册的Bean信息。
-而执行入口是refresh方法内的这行代码：
+而最外层的执行入口是refresh方法内的这行代码：
 ```java
 // Invoke factory processors registered as beans in the context.
 				invokeBeanFactoryPostProcessors(beanFactory);
@@ -515,8 +516,7 @@ public static void invokeBeanFactoryPostProcessors(
 ```
 可以看到这里invokeBeanDefinitionRegistryPostProcessors解析Bean注册信息之前还对BeanFactotyPostProcessors做了排序处理。
 
-BeanFactoryPostProcessor的简单解读就先到这里，可以简单总结一下就是BeanFactoryPostProcessor是在BeanFactory创建和初始化之后执行的容器级别后置处理器，
-允许客户端定制化一些BeanFactory初始化之后的行为，如增加注册注解引入的Bean配置等。
+BeanFactoryPostProcessor的简单解读就先到这里，可以简单总结一下就是BeanFactoryPostProcessor是在BeanFactory创建和初始化之后执行的容器级别后置处理器,允许客户端定制化一些BeanFactory初始化之后的行为，如增加注册注解引入的Bean配置等。
 
 # 四、参考材料
 
