@@ -2,7 +2,7 @@
 layout: post
 title: "JEP444解读和虚拟线程初体验"
 date: 2023-10-25
-tags: [ spring ]
+tags: [ Java语言基础 ]
 comments: true
 author: zouhuanli
 ---
