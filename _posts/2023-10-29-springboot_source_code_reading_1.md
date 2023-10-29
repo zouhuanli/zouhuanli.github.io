@@ -8,8 +8,7 @@ author: zouhuanli
 ---
 
 本文是SpringBoot源码阅读计划的第一篇文章，本文主要介绍一下SpringBoot的整体功能和使用一个示例功能开始上手使用SpringBoot和理解SpringBoot。
-
-SpringBoot像较于Spring Framework并不是一个新的框架，而是极大的简化使用Spring框架、提供快速简单使用Spring的方式。<br>
+SpringBoot相较于Spring Framework并不是一个新的框架，而是极大的简化使用Spring框架、提供快速简单使用Spring的方式。<br>
 SpringBoot提供一系列的stater组件，极大的简化配置管理和依赖管理，从而提简单快速搭建spring应用。<br>
 传统的Spring应用有很重的XML配置和各种各样的配置文件，SpringBoot正是为了简化配置、快速开发而生。<br>
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。
@@ -19,19 +18,18 @@ Framework版本是6.0.11。<br>
 
 # 一、SpringBoot概述
 
-下列来自SpringBoot官方文档。
-SpringBoot的主要目标是：
-• 为所有的Spring开发提供一个根本性的更快、更广泛的入门体验。
-• 开箱即用，但随着需求开始偏离默认值，请迅速摆脱与默认设置偏离的困境。
-• 提供一系列大类项目常见的非功能特性（如嵌入式服务器、安全、度量、健康检查和外部化配置）。
-• 几乎没有代码生成，也不要求XML配置。
+下列来自SpringBoot官方文档。<br>
+SpringBoot的主要目标是：<br>
+• 为所有的Spring开发提供一个根本性的更快、更广泛的入门体验。<br>
+• 开箱即用，但随着需求开始偏离默认值，请迅速摆脱与默认设置偏离的困境。<br>
+• 提供一系列大类项目常见的非功能特性（如嵌入式服务器、安全、度量、健康检查和外部化配置）。<br>
+• 几乎没有代码生成，也不要求XML配置。<br>
 
-可以看到Spring最核心的功能就是：
-<strong>1.自动依赖管理</strong>。通过各系列的stater将所需依赖项统一管理。
-<strong>2.自动配置</strong>。通过自动配置模块统一管理配置，这里基于约定优于配置的思想，会自动选择需要的配置。
-此外增加了一些企业级的功能，如Actuator监控检测和监控。
-
-把握这两个核心功能有助于我们简化理解SpringBoot。
+可以看到Spring最核心的功能就是：<br>
+<strong>1.自动依赖管理</strong>。通过各系列的stater将所需依赖项统一管理。<br>
+<strong>2.自动配置</strong>。通过自动配置模块统一管理配置，这里基于约定优于配置的思想，会自动选择需要的配置。<br>
+此外增加了一些企业级的功能，如Actuator监控检测和监控。<br>
+把握这两个核心功能有助于我们简化理解SpringBoot。<br>
 
 # 二、示例工程
 
@@ -468,8 +466,8 @@ public class User implements Serializable {
 这里简单介绍一下这些项目:<br>
 test的自然就是测试相关的项目，暂时先不做过多解读。<br>
 spring-boot-parent：父项目，主要是全局的依赖管理。<br>
-spring-boot:boot的主项目，也是源码阅读系列的重点解读项目。<br>
-spring-boot-autoconfigure：自动配置，自动配置实现的代码都在里面，是源码阅读系列的重点解读项目。<br>
+<stong>spring-boot</stong>:boot的主项目，也是源码阅读系列的重点解读项目。<br>
+<stong>spring-boot-autoconfigure</stong>：自动配置，自动配置实现的代码都在里面，是源码阅读系列的重点解读项目。<br>
 spring-boot-actuator:监控和健康检测的项目。<br>
 spring-boot-dependencies:推荐依赖，里面只有maven或gradle依赖，没有Java代码。里面是SpringBoot对实际开放中各个组件使用需要的依赖做的统一推荐。<br>
 spring-boot-devtools：开发工具，提供比如热部署等开发者需要的工具和功能。<br>
