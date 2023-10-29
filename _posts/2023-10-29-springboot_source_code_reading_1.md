@@ -466,8 +466,8 @@ public class User implements Serializable {
 这里简单介绍一下这些项目:<br>
 test的自然就是测试相关的项目，暂时先不做过多解读。<br>
 spring-boot-parent：父项目，主要是全局的依赖管理。<br>
-<stong>spring-boot</stong>:boot的主项目，也是源码阅读系列的重点解读项目。<br>
-<stong>spring-boot-autoconfigure</stong>：自动配置，自动配置实现的代码都在里面，是源码阅读系列的重点解读项目。<br>
+<strong>spring-boot</strong>:boot的主项目，也是源码阅读系列的重点解读项目。<br>
+<strong>spring-boot-autoconfigure</strong>：自动配置，自动配置实现的代码都在里面，是源码阅读系列的重点解读项目。<br>
 spring-boot-actuator:监控和健康检测的项目。<br>
 spring-boot-dependencies:推荐依赖，里面只有maven或gradle依赖，没有Java代码。里面是SpringBoot对实际开放中各个组件使用需要的依赖做的统一推荐。<br>
 spring-boot-devtools：开发工具，提供比如热部署等开发者需要的工具和功能。<br>
