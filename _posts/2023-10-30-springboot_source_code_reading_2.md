@@ -92,7 +92,9 @@ protected void initStrategies(ApplicationContext context) {
 		initFlashMapManager(context);
 	}
 ```
-这里从DispatcherServlet.properties文件创建默认的九大组件。
+上面这里从DispatcherServlet.properties文件创建默认的九大组件。
+
+而初始化器或者说工厂组件是通过spring.factories文件来配置的，如下:
 ````properties
 # Logging Systems
 org.springframework.boot.logging.LoggingSystemFactory=\
@@ -199,7 +201,7 @@ org.springframework.boot.orm.jpa.JpaDependsOnDatabaseInitializationDetector
 
 ````
 
-这里创建初始化器/工厂类与其相似，从“META-INF/spring.factories”读取初始化器/工厂类的默认实现策略，在获取初始器时候进行实例化。<br>
+这里创建初始化器/工厂组件与其相似，从“META-INF/spring.factories”读取初始化器/工厂组件的默认实现策略，在获取初始器时候进行实例化。<br>
 我们跟踪getSpringFactoriesInstances方法来到：
 ```java
                         //FACTORIES_RESOURCE_LOCATION="META-INF/spring.factories"
@@ -244,7 +246,7 @@ public static SpringFactoriesLoader forResourceLocation(String resourceLocation,
 ```
 其解析的配置的类型列表如下：
 
-![factories](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-29-springboot_source_code_reading_2/factories.png)
+![factories](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-30-springboot_source_code_reading_2/factories.png)
 
 和spring.factories配置信息一致,这里只是加载了spring.factories配置信息，并没有真正创建某一个工厂类的实例。<br>
 创建工厂类的实例是通过load方法去懒加载来创建的，实际用到了哪个类型才创建，和Java SPI一样。<br>
@@ -478,7 +480,7 @@ createApplicationContext方法只是按照应用类型创建ApplicationContext�
 在解读ApplicationContext整体结构的文章中有提及到主要有两类的上下文，一类是refreshable的可以刷新的，一类是generic不刷新的。而示例工程是一个Web项目因此创建的ApplicationContext应该是generic的子类，应该是基于注解的AnnotationWebXXXContext这样的。
 跟踪测试流程发现这里创建的是AnnotationConfigServletWebServerApplicationContext(名字好长啊),其类关系图如下：
 
-![AnnotationConfigServletWebServerApplicationContext](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-29-springboot_source_code_reading_2/AnnotationConfigServletWebServerApplicationContext.png)
+![AnnotationConfigServletWebServerApplicationContext](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-30-springboot_source_code_reading_2/AnnotationConfigServletWebServerApplicationContext.png)
 
 可以看到这里boot对标准Spring的ApplicationContext做了一些拓展和定制化。而手动设置应用类型为NONE，普通的标准Java应用自然是上下文对象是AnnotationConfigApplicationContext。
 
@@ -559,7 +561,7 @@ BeanDefinitionLoader是融合读取XML的bean配置，注解的Bean配置(Compon
 然后进入AnnotatedBeanDefinitionReader的注册方法，注册主配置类MySpringBootApplication到容器BeanFactory中，存入beanDefinitionMap。<br>
 这里只注册了主配置类和一些框架本身的基础设施类，尚未没有开始注册应用的全部的bean ,如下。
 
-![beanDefinitions](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-29-springboot_source_code_reading_2/beanDefinitions.png)
+![beanDefinitions](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-30-springboot_source_code_reading_2/beanDefinitions.png)
 
 应用内其他的Bean是在refresh方法内部的invokeBeanFactoryPostProcessors方法通过ConfigurationClassPostProcessor去注册的。
 
