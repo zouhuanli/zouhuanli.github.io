@@ -57,18 +57,18 @@ public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySourc
 确定应用类型的方法deduceFromClasspath很简单，如下：
 ```java
 static WebApplicationType deduceFromClasspath() {
-                            //尝试加载“org.springframework.web.reactive.DispatcherHandler”成功，而不加载DispatcherServlet和ServletContainer
+                            //REACTIVE栈
         if (ClassUtils.isPresent(WEBFLUX_INDICATOR_CLASS, null) && !ClassUtils.isPresent(WEBMVC_INDICATOR_CLASS, null)
         && !ClassUtils.isPresent(JERSEY_INDICATOR_CLASS, null)) {
         return WebApplicationType.REACTIVE;
         }
-                            //加载DispatcherServlet和ServletContainer某一个不成功
+                            //尝试加载 SERVLET_INDICATOR_CLASSES = { "jakarta.servlet.Servlet","org.springframework.web.context.ConfigurableWebApplicationContext" };
         for (String className : SERVLET_INDICATOR_CLASSES) {
         if (!ClassUtils.isPresent(className, null)) {
         return WebApplicationType.NONE;
               }
             }
-                            //加载DispatcherServlet和ServletContainer都成功
+                            //加载Servlet和ConfigurableWebApplicationContext都成功,返回SERVLET
         return WebApplicationType.SERVLET;
         }
 ```
