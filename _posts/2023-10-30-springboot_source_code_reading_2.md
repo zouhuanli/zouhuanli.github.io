@@ -566,18 +566,412 @@ BeanDefinitionLoader是融合读取XML的bean配置，注解的Bean配置(Compon
 应用内其他的Bean是在refresh方法内部的invokeBeanFactoryPostProcessors方法通过ConfigurationClassPostProcessor去注册的。
 
 ## 6.refresh刷新容器
-    todo~
+    
+refresh方法就是AbstractApplicationContext的刷新方法，是销毁旧容器、创建和配置新容器，刷新整个应用下文的方法。这里额外注册了关闭钩子。
+
+```java
+	private void refreshContext(ConfigurableApplicationContext context) {
+		if (this.registerShutdownHook) {
+			shutdownHook.registerApplicationContext(context);
+		}
+		refresh(context);
+	}
+```
+refresh方法这里不再过多解读，其基本方法如下：
+```java
+@Override
+	public void refresh() throws BeansException, IllegalStateException {
+		synchronized (this.startupShutdownMonitor) {
+			StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
+
+			// Prepare this context for refreshing.
+			prepareRefresh();
+
+			// Tell the subclass to refresh the internal bean factory.
+			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+
+			// Prepare the bean factory for use in this context.
+			prepareBeanFactory(beanFactory);
+
+			try {
+				// Allows post-processing of the bean factory in context subclasses.
+				postProcessBeanFactory(beanFactory);
+
+				StartupStep beanPostProcess = this.applicationStartup.start("spring.context.beans.post-process");
+				// Invoke factory processors registered as beans in the context.
+				invokeBeanFactoryPostProcessors(beanFactory);
+
+				// Register bean processors that intercept bean creation.
+				registerBeanPostProcessors(beanFactory);
+				beanPostProcess.end();
+
+				// Initialize message source for this context.
+				initMessageSource();
+
+				// Initialize event multicaster for this context.
+				initApplicationEventMulticaster();
+
+				// Initialize other special beans in specific context subclasses.
+				onRefresh();
+
+				// Check for listener beans and register them.
+				registerListeners();
+
+				// Instantiate all remaining (non-lazy-init) singletons.
+				finishBeanFactoryInitialization(beanFactory);
+
+				// Last step: publish corresponding event.
+				finishRefresh();
+			}
+
+			catch (BeansException ex) {
+				if (logger.isWarnEnabled()) {
+					logger.warn("Exception encountered during context initialization - " +
+							"cancelling refresh attempt: " + ex);
+				}
+
+				// Destroy already created singletons to avoid dangling resources.
+				destroyBeans();
+
+				// Reset 'active' flag.
+				cancelRefresh(ex);
+
+				// Propagate exception to caller.
+				throw ex;
+			}
+
+			finally {
+				// Reset common introspection caches in Spring's core, since we
+				// might not ever need metadata for singleton beans anymore...
+				resetCommonCaches();
+				contextRefresh.end();
+			}
+		}
+	}
+```
+refresh方法是创建上下文和容器及其核心的方法，笔者的多个文章有涉及这个方法。读者可以参考阅读一下这篇文章["Spring IoC容器初始化流程"](https://zouhuanli.github.io/spring_source_code_reading_4/)。
+下面笔者解读一下和boot有关联的两个方法。
+
 ### 6.1 特别点1：onRefresh方法
+
+默认的onRefresh方法是一个空方法。
+
+```java
+/**
+	 * Template method which can be overridden to add context-specific refresh work.
+	 * Called on initialization of special beans, before instantiation of singletons.
+	 * <p>This implementation is empty.
+	 * @throws BeansException in case of errors
+	 * @see #refresh()
+	 */
+	protected void onRefresh() throws BeansException {
+		// For subclasses: do nothing by default.
+	}
+```
+
+我们进入AnnotationConfigServletWebServerApplicationContext的父类ServletWebServerApplicationContext,有重写这个方法:
+
+```java
+@Override
+	protected void onRefresh() {
+		super.onRefresh();
+		try {
+			createWebServer();
+		}
+		catch (Throwable ex) {
+			throw new ApplicationContextException("Unable to start web server", ex);
+		}
+	}
+```
+
+这里创建了内嵌的WebServer。
+```java
+
+	private void createWebServer() {
+		WebServer webServer = this.webServer;
+		ServletContext servletContext = getServletContext();
+		if (webServer == null && servletContext == null) {
+			StartupStep createWebServer = getApplicationStartup().start("spring.boot.webserver.create");
+			ServletWebServerFactory factory = getWebServerFactory();
+			createWebServer.tag("factory", factory.getClass().toString());
+                            //创建WebServer
+			this.webServer = factory.getWebServer(getSelfInitializer());
+			createWebServer.end();
+			getBeanFactory().registerSingleton("webServerGracefulShutdown",
+					new WebServerGracefulShutdownLifecycle(this.webServer));
+			getBeanFactory().registerSingleton("webServerStartStop",
+					new WebServerStartStopLifecycle(this, this.webServer));
+		}
+		else if (servletContext != null) {
+			try {
+				getSelfInitializer().onStartup(servletContext);
+			}
+			catch (ServletException ex) {
+				throw new ApplicationContextException("Cannot initialize servlet context", ex);
+			}
+		}
+		initPropertySources();
+	}
+```
+框架提供的Sever类型有JettyWebServer、NettyWebServer、TomcatWebServer、UndertowServletWebServer、UndertowWebServer，示例工程的Server是TomcatWebServer。
 
 ### 6.2 特别点2：invokeBeanFactoryPostProcessors方法
 
+这个方法invokeBeanFactoryPostProcessors笔者提及到多次了,方法内使用BeanDefinitionRegistryPostProcessor(ConfigurationClassPostProcessor)完成了注解配置Bean的解析和注册。
+```java
+	/**
+	 * Build and validate a configuration model based on the registry of
+	 * {@link Configuration} classes.
+	 */
+	public void processConfigBeanDefinitions(BeanDefinitionRegistry registry) {
+		List<BeanDefinitionHolder> configCandidates = new ArrayList<>();
+		String[] candidateNames = registry.getBeanDefinitionNames();
+
+		for (String beanName : candidateNames) {
+			BeanDefinition beanDef = registry.getBeanDefinition(beanName);
+			if (beanDef.getAttribute(ConfigurationClassUtils.CONFIGURATION_CLASS_ATTRIBUTE) != null) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Bean definition has already been processed as a configuration class: " + beanDef);
+				}
+			}
+			else if (ConfigurationClassUtils.checkConfigurationClassCandidate(beanDef, this.metadataReaderFactory)) {
+				configCandidates.add(new BeanDefinitionHolder(beanDef, beanName));
+			}
+		}
+
+		// Return immediately if no @Configuration classes were found
+		if (configCandidates.isEmpty()) {
+			return;
+		}
+
+		// Sort by previously determined @Order value, if applicable
+		configCandidates.sort((bd1, bd2) -> {
+			int i1 = ConfigurationClassUtils.getOrder(bd1.getBeanDefinition());
+			int i2 = ConfigurationClassUtils.getOrder(bd2.getBeanDefinition());
+			return Integer.compare(i1, i2);
+		});
+
+		// Detect any custom bean name generation strategy supplied through the enclosing application context
+		SingletonBeanRegistry sbr = null;
+		if (registry instanceof SingletonBeanRegistry _sbr) {
+			sbr = _sbr;
+			if (!this.localBeanNameGeneratorSet) {
+				BeanNameGenerator generator = (BeanNameGenerator) sbr.getSingleton(
+						AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR);
+				if (generator != null) {
+					this.componentScanBeanNameGenerator = generator;
+					this.importBeanNameGenerator = generator;
+				}
+			}
+		}
+
+		if (this.environment == null) {
+			this.environment = new StandardEnvironment();
+		}
+
+		// Parse each @Configuration class
+		ConfigurationClassParser parser = new ConfigurationClassParser(
+				this.metadataReaderFactory, this.problemReporter, this.environment,
+				this.resourceLoader, this.componentScanBeanNameGenerator, registry);
+                                //配置类候选集，在上面checkConfigurationClassCandidate通过@Configuration注解去判断，@SpringBootApplication内含了@Configuration注解
+		Set<BeanDefinitionHolder> candidates = new LinkedHashSet<>(configCandidates);
+		Set<ConfigurationClass> alreadyParsed = new HashSet<>(configCandidates.size());
+		do {
+			StartupStep processConfig = this.applicationStartup.start("spring.context.config-classes.parse");
+                                //注意这行代码。从一个配置类解析相关的所有Bean信息。
+			parser.parse(candidates);
+			parser.validate();
+
+			Set<ConfigurationClass> configClasses = new LinkedHashSet<>(parser.getConfigurationClasses());
+			configClasses.removeAll(alreadyParsed);
+
+			// Read the model and create bean definitions based on its content
+			if (this.reader == null) {
+				this.reader = new ConfigurationClassBeanDefinitionReader(
+						registry, this.sourceExtractor, this.resourceLoader, this.environment,
+						this.importBeanNameGenerator, parser.getImportRegistry());
+			}
+			this.reader.loadBeanDefinitions(configClasses);
+			alreadyParsed.addAll(configClasses);
+			processConfig.tag("classCount", () -> String.valueOf(configClasses.size())).end();
+
+			candidates.clear();
+			if (registry.getBeanDefinitionCount() > candidateNames.length) {
+				String[] newCandidateNames = registry.getBeanDefinitionNames();
+				Set<String> oldCandidateNames = Set.of(candidateNames);
+				Set<String> alreadyParsedClasses = new HashSet<>();
+				for (ConfigurationClass configurationClass : alreadyParsed) {
+					alreadyParsedClasses.add(configurationClass.getMetadata().getClassName());
+				}
+				for (String candidateName : newCandidateNames) {
+					if (!oldCandidateNames.contains(candidateName)) {
+						BeanDefinition bd = registry.getBeanDefinition(candidateName);
+						if (ConfigurationClassUtils.checkConfigurationClassCandidate(bd, this.metadataReaderFactory) &&
+								!alreadyParsedClasses.contains(bd.getBeanClassName())) {
+							candidates.add(new BeanDefinitionHolder(bd, candidateName));
+						}
+					}
+				}
+				candidateNames = newCandidateNames;
+			}
+		}
+		while (!candidates.isEmpty());
+
+		// Register the ImportRegistry as a bean in order to support ImportAware @Configuration classes
+		if (sbr != null && !sbr.containsSingleton(IMPORT_REGISTRY_BEAN_NAME)) {
+			sbr.registerSingleton(IMPORT_REGISTRY_BEAN_NAME, parser.getImportRegistry());
+		}
+
+		// Store the PropertySourceDescriptors to contribute them Ahead-of-time if necessary
+		this.propertySourceDescriptors = parser.getPropertySourceDescriptors();
+
+		if (this.metadataReaderFactory instanceof CachingMetadataReaderFactory cachingMetadataReaderFactory) {
+			// Clear cache in externally provided MetadataReaderFactory; this is a no-op
+			// for a shared cache since it'll be cleared by the ApplicationContext.
+			cachingMetadataReaderFactory.clearCache();
+		}
+	}
+
+```
+然后来到这个方法,这里解析了各种注解引入的Bean信息，也包含ComponentScan路径扫描的：
+```java
+
+	/**
+	 * Apply processing and build a complete {@link ConfigurationClass} by reading the
+	 * annotations, members and methods from the source class. This method can be called
+	 * multiple times as relevant sources are discovered.
+	 * @param configClass the configuration class being build
+	 * @param sourceClass a source class
+	 * @return the superclass, or {@code null} if none found or previously processed
+	 */
+	@Nullable
+	protected final SourceClass doProcessConfigurationClass(
+			ConfigurationClass configClass, SourceClass sourceClass, Predicate<String> filter)
+			throws IOException {
+
+		if (configClass.getMetadata().isAnnotated(Component.class.getName())) {
+			// Recursively process any member (nested) classes first
+			processMemberClasses(configClass, sourceClass, filter);
+		}
+
+		// Process any @PropertySource annotations
+		for (AnnotationAttributes propertySource : AnnotationConfigUtils.attributesForRepeatable(
+				sourceClass.getMetadata(), PropertySources.class,
+				org.springframework.context.annotation.PropertySource.class)) {
+			if (this.propertySourceRegistry != null) {
+				this.propertySourceRegistry.processPropertySource(propertySource);
+			}
+			else {
+				logger.info("Ignoring @PropertySource annotation on [" + sourceClass.getMetadata().getClassName() +
+						"]. Reason: Environment must implement ConfigurableEnvironment");
+			}
+		}
+
+		// Process any @ComponentScan annotations
+		Set<AnnotationAttributes> componentScans = AnnotationConfigUtils.attributesForRepeatable(
+				sourceClass.getMetadata(), ComponentScans.class, ComponentScan.class);
+		if (!componentScans.isEmpty() &&
+				!this.conditionEvaluator.shouldSkip(sourceClass.getMetadata(), ConfigurationPhase.REGISTER_BEAN)) {
+			for (AnnotationAttributes componentScan : componentScans) {
+				// The config class is annotated with @ComponentScan -> perform the scan immediately
+				Set<BeanDefinitionHolder> scannedBeanDefinitions =
+						this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName());
+				// Check the set of scanned definitions for any further config classes and parse recursively if needed
+				for (BeanDefinitionHolder holder : scannedBeanDefinitions) {
+					BeanDefinition bdCand = holder.getBeanDefinition().getOriginatingBeanDefinition();
+					if (bdCand == null) {
+						bdCand = holder.getBeanDefinition();
+					}
+					if (ConfigurationClassUtils.checkConfigurationClassCandidate(bdCand, this.metadataReaderFactory)) {
+						parse(bdCand.getBeanClassName(), holder.getBeanName());
+					}
+				}
+			}
+		}
+
+		// Process any @Import annotations
+		processImports(configClass, sourceClass, getImports(sourceClass), filter, true);
+
+		// Process any @ImportResource annotations
+		AnnotationAttributes importResource =
+				AnnotationConfigUtils.attributesFor(sourceClass.getMetadata(), ImportResource.class);
+		if (importResource != null) {
+			String[] resources = importResource.getStringArray("locations");
+			Class<? extends BeanDefinitionReader> readerClass = importResource.getClass("reader");
+			for (String resource : resources) {
+				String resolvedResource = this.environment.resolveRequiredPlaceholders(resource);
+				configClass.addImportedResource(resolvedResource, readerClass);
+			}
+		}
+
+		// Process individual @Bean methods
+		Set<MethodMetadata> beanMethods = retrieveBeanMethodMetadata(sourceClass);
+		for (MethodMetadata methodMetadata : beanMethods) {
+			configClass.addBeanMethod(new BeanMethod(methodMetadata, configClass));
+		}
+
+		// Process default methods on interfaces
+		processInterfaces(configClass, sourceClass);
+
+		// Process superclass, if any
+		if (sourceClass.getMetadata().hasSuperClass()) {
+			String superclass = sourceClass.getMetadata().getSuperClassName();
+			if (superclass != null && !superclass.startsWith("java") &&
+					!this.knownSuperclasses.containsKey(superclass)) {
+				this.knownSuperclasses.put(superclass, configClass);
+				// Superclass found, return its annotation metadata and recurse
+				return sourceClass.getSuperClass();
+			}
+		}
+
+		// No superclass -> processing is complete
+		return null;
+	}
+```
 ## 7.afterRefresh钩子方法
 
-## 8.callRunners执行
+afterRefresh方法是一个空方法，作为拓展点。
+```java
 
-## 9.started监听事件
+	/**
+	 * Called after the context has been refreshed.
+	 * @param context the application context
+	 * @param args the application arguments
+	 */
+	protected void afterRefresh(ConfigurableApplicationContext context, ApplicationArguments args) {
+	}
+```
 
-## 10.执行runners
+## 8.started监听事件
+
+这里是发布监听事件，执行监听器对应的监听方法。
+```java
+void started(ConfigurableApplicationContext context, Duration timeTaken) {
+		doWithListeners("spring.boot.application.started", (listener) -> listener.started(context, timeTaken));
+	}
+```
+
+## 9.执行runners
+
+执行注册过的runner,有ApplicationRunner、CommandLineRunner两类。
+```java
+private void callRunners(ApplicationContext context, ApplicationArguments args) {
+		List<Object> runners = new ArrayList<>();
+		runners.addAll(context.getBeansOfType(ApplicationRunner.class).values());
+		runners.addAll(context.getBeansOfType(CommandLineRunner.class).values());
+		AnnotationAwareOrderComparator.sort(runners);
+		for (Object runner : new LinkedHashSet<>(runners)) {
+			if (runner instanceof ApplicationRunner applicationRunner) {
+				callRunner(applicationRunner, args);
+			}
+			if (runner instanceof CommandLineRunner commandLineRunner) {
+				callRunner(commandLineRunner, args);
+			}
+		}
+	}
+```
+
+至此，启动流程基本分析一遍，要重关注spring.factories这里面的工厂类注册信息和作用、SpringBoot的ApplicationContext对基本ApplicationContext的拓展,以及refresh刷新容器的方法。
 
 # 四、参考材料
 
