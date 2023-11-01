@@ -326,7 +326,7 @@ public static ImportCandidates load(Class<?> annotation, ClassLoader classLoader
 
 ![configurations](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-31-springboot_source_code_reading_3/configurations.png)
 
-那么AutoConfiguration类是在那里注册到容器，和SpringFramework相结合呢？
+那么AutoConfiguration类是在哪里注册到容器，和SpringFramework相结合呢？
 我们从ConfigurationClassPostProcessor#processConfigBeanDefinitions方法一路追踪，来到ConfigurationClassParser#parse方法,再进入ConfigurationClassParser#doProcessConfigurationClass方法，
 最后来到processImports方法。
 
@@ -646,12 +646,12 @@ public class DataSourceAutoConfiguration {
 
 ### 2.1 DataSourceProperties的注册和实例化
 
-DataSourceProperties是解析和存储数据库配置的Bean，看属性和功能应和上面示例的DataSourcePropertiesBean一样。接下来要重点关注：
- 1.DataSourceProperties如何创建和何处创建？---注解Bean和创建Bean。
- 2.DataSourceProperties内部的各项属性(字段)如何获取到配置项文件的配置值？----属性绑定。
+DataSourceProperties是解析和存储数据库配置的Bean，看属性和功能应和上面示例的DataSourcePropertiesBean一样。接下来要重点关注：<br>
+ 1.DataSourceProperties如何创建和何处创建？---注解Bean和创建Bean。<br>
+ 2.DataSourceProperties内部的各项属性(字段)如何获取到配置项文件的配置值？----属性绑定。<br>
 
-相对于PropertiesJdbcConnectionDetails由应用显式创建(如下)，DataSourceProperties这个对象并未找到显式创建的代码。因此可以推断这个Bean应该首先在invokeBeanFactoryPostProcessors这里通过某一个Registrar完成
-BeanDefinition的注册，注册Bean信息到容器的beanDefinitionMap里面。然后finishBeanFactoryInitialization完成实例化真正创建这个对象。
+相对于PropertiesJdbcConnectionDetails由应用显式创建(如下)，DataSourceProperties这个对象并未找到显式创建的代码。<br>
+因此这里可以推断这个Bean应该首先在invokeBeanFactoryPostProcessors这里通过某一个XXXRegistrar完成BeanDefinition的注册，注册Bean信息到容器的beanDefinitionMap里面。然后finishBeanFactoryInitialization完成实例化真正创建这个对象。
 
 ```java
                         //显式创建Bean
@@ -1020,9 +1020,9 @@ if (property.isSettable()) {
 ```
 上面的解读过程中DataSourceProperties、JdbcConnectionDetails已经创建完成了，现在可以成功创建HikariDataSource了。<br>
 
-要重点理解DataSourceProperties的注册和实例化(创建对象)、<strong>属性绑定(解析和存储配置文件的配置值)</strong>这两个流程,整体流程建议按照文章的解读内容结合实际调试boot源码来加深理解。
+要重点理解DataSourceProperties的注册和实例化(创建对象)、<strong>属性绑定(解析和存储配置文件的配置值)</strong>这两个流程,整体流程建议按照文章的解读内容结合实际调试boot源码来加深理解。<br>
 本文从@SpringBootApplication注解开始，解读了自动配置的相关组件类，和某一个自动配置类的实现原理，由表到里，由浅入深，文章内容较多还有一些和SpringFramework源码解读相结合的内容，希望读者能够
-按照流程去实际德SpringBoot代码，加深对自动配置实现原理的理解。
+按照流程去实际的SpringBoot代码，加深对自动配置实现原理的理解。
 # 四、参考材料
 
 1.《Spring Boot Reference Documentation》(version 3.1.5)<br>
