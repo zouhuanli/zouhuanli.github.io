@@ -1021,7 +1021,8 @@ if (property.isSettable()) {
 上面的解读过程中DataSourceProperties、JdbcConnectionDetails已经创建完成了，现在可以成功创建HikariDataSource了。<br>
 
 要重点理解DataSourceProperties的注册和实例化(创建对象)、<strong>属性绑定(解析和存储配置文件的配置值)</strong>这两个流程,整体流程建议按照文章的解读内容结合实际调试boot源码来加深理解。
-
+本文从@SpringBootApplication注解开始，解读了自动配置的相关组件类，和某一个自动配置类的实现原理，由表到里，由浅入深，文章内容较多还有一些和SpringFramework源码解读相结合的内容，希望读者能够
+按照流程去实际德SpringBoot代码，加深对自动配置实现原理的理解。
 # 四、参考材料
 
 1.《Spring Boot Reference Documentation》(version 3.1.5)<br>
