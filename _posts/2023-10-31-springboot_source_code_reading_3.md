@@ -468,7 +468,559 @@ processImports(configurationClass, asSourceClass(configurationClass, exclusionFi
 
 # 三、AutoConfiguration解读
 
-todo~
+这里以DataSourceAutoConfiguration这个自动配置类作为示例。<br>
+解读DataSourceAutoConfiguration之前，考虑一个及其简单的数据源自动配置类，全部使用Java代码+注解实现，可以简单的这样做。<br>
+先配置一个PropertySourcesPlaceholderConfigurer实例。
+
+```java
+@Configuration
+public class PropertySourcesPlaceholderConfigurerConfig {
+
+    @Bean
+    public PropertySourcesPlaceholderConfigurer propertyConfigurer() {
+        PropertySourcesPlaceholderConfigurer propertyConfigurer = new PropertySourcesPlaceholderConfigurer();
+        propertyConfigurer.setIgnoreUnresolvablePlaceholders(true);
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        Resource classPathResource = resolver.getResource("classpath:springmvc-db.properties");
+        propertyConfigurer.setLocation(classPathResource);
+        return propertyConfigurer;
+    }
+```
+
+再配置数据库连接配置的PropertiesBean。
+
+```java
+@Data
+@Configuration
+public class DataSourcePropertiesBean {
+    /**
+     * <property name="driverClassName" value="${db.driver}"/>
+     * <property name="jdbcUrl" value="${db.url}"/>
+     * <property name="username" value="${db.username}"/>
+     * <property name="password" value="${db.password}"/>
+     * <property name="connectionTestQuery" value="${db.connectionTestQuery}"/>
+     * <!-- 生效超时 -->
+     * <property name="validationTimeout" value="${db.validationTimeout}"/>
+     * <!-- 连接只读数据库时配置为true， 保证安全 -->
+     * <property name="readOnly" value="${db.readOnly}"/>
+     * <!-- 等待连接池分配连接的最大时长（毫秒），超过这个时长还没可用的连接则发生SQLException， 缺省:30秒 -->
+     * <property name="connectionTimeout" value="${db.connectionTimeout}"/>
+     * <!-- 一个连接idle状态的最大时长（毫秒），超时则被释放（retired），缺省:10分钟 -->
+     * <property name="idleTimeout" value="${db.idleTimeout}"/>
+     * <!-- 一个连接的生命时长（毫秒），超时而且没被使用则被释放（retired），缺省:30分钟，建议设置比数据库超时时长少30秒，参考MySQL
+     * wait_timeout参数（show variables like '%timeout%';） -->
+     * <property name="maxLifetime" value="${db.maxLifetime}"/>
+     * <!-- 连接池中允许的最大连接数。缺省值：10；推荐的公式：((core_count * 2) + effective_spindle_count) -->
+     * <property name="maximumPoolSize" value="${db.maximumPoolSize}"/>
+     **/
+    @Value("${db.driver}")
+    private String driverClassName;
+    @Value("${db.url}")
+    private String jdbcUrl;
+    @Value("${db.username}")
+    private String username;
+    @Value("${db.password}")
+    private String password;
+    @Value("${db.connectionTestQuery}")
+    private String connectionTestQuery;
+    @Value("${db.validationTimeout}")
+    private long validationTimeout;
+    @Value("${db.readOnly}")
+    private boolean readOnly;
+    @Value("${db.connectionTimeout}")
+    private long connectionTimeout;
+    @Value("${db.idleTimeout}")
+    private long idleTimeout;
+    @Value("${db.maxLifetime}")
+    private long maxLifetime;
+    @Value("${db.maximumPoolSize}")
+    private int maximumPoolSize;
+    
+}
+```
+
+再创建数据源Datasource。
+```java
+@Configuration
+public class DataSourceConfiguration {
+    @Bean(name = "dataSource")
+    public HikariDataSource dataSource(@Autowired @Qualifier("dataSourcePropertiesBean") DataSourcePropertiesBean dataSourceConfig) {
+        return buildDataSource(dataSourceConfig);
+    }
+    private HikariDataSource buildDataSource(DataSourcePropertiesBean dataSourceConfig) {
+        HikariDataSource dataSource = new HikariDataSource();
+        dataSource.setPoolName("HikariDataSource-Pool-1");
+        dataSource.setDriverClassName(dataSourceConfig.getDriverClassName());
+        dataSource.setJdbcUrl(dataSourceConfig.getJdbcUrl());
+        dataSource.setUsername(dataSourceConfig.getUsername());
+        dataSource.setPassword(dataSourceConfig.getPassword());
+        dataSource.setConnectionTestQuery(dataSourceConfig.getConnectionTestQuery());
+        dataSource.setValidationTimeout(dataSourceConfig.getValidationTimeout());
+        dataSource.setReadOnly(dataSourceConfig.isReadOnly());
+        dataSource.setConnectionTimeout(dataSourceConfig.getConnectionTimeout());
+        dataSource.setIdleTimeout(dataSourceConfig.getIdleTimeout());
+        dataSource.setMaxLifetime(dataSourceConfig.getMaxLifetime());
+        dataSource.setMaximumPoolSize(dataSourceConfig.getMaximumPoolSize());
+
+        return dataSource;
+    }
+```
+这样name为dataSource，类型为HikariDataSource的数据源对象就创建好了。这里使用到了PropertySourcesPlaceholderConfigurer这个对象来解析@value注入的配置项。<br>
+这只是非常简陋的实现方法，不过也可以帮助我们理解DataSourceAutoConfiguration这个自动配置类的实现原理。<br>
+因此，可以作一下初步的假设DataSourceAutoConfiguration这个配置类首先要解析数据库配置，生产XXXPropertiesBean这样一个对象来保存配置，然后创建Datasource的Bean对象。<br>
+我们开始看下这个类的源码。
+
+## 1.DataSourceAutoConfiguration
+
+DataSourceAutoConfiguration源码如下：
+```java
+                                //AutoConfiguration注解标识是SpringBoot的自动配置类，注解里面使用了@Configuration
+@AutoConfiguration(before = SqlInitializationAutoConfiguration.class)
+@ConditionalOnClass({ DataSource.class, EmbeddedDatabaseType.class })
+@ConditionalOnMissingBean(type = "io.r2dbc.spi.ConnectionFactory")
+                                 //EnableConfigurationProperties注解，导入解析和存储配置项的Bean，这个注解引入了EnableConfigurationPropertiesRegistrar这个注册器
+@EnableConfigurationProperties(DataSourceProperties.class)
+                                //引入DataSourcePoolMetadataProvidersConfiguration，数据库连接池配置类
+@Import(DataSourcePoolMetadataProvidersConfiguration.class)
+public class DataSourceAutoConfiguration {
+                                 //引入内嵌的数据源Datasource
+	@Configuration(proxyBeanMethods = false)
+	@Conditional(EmbeddedDatabaseCondition.class)
+	@ConditionalOnMissingBean({ DataSource.class, XADataSource.class })
+	@Import(EmbeddedDataSourceConfiguration.class)
+	protected static class EmbeddedDatabaseConfiguration {
+
+	}
+                                 //创建连接池类型的数据源，有Hikari(默认)、Tomcat、Dbcp2、OracleUcp、Generic等类型
+	@Configuration(proxyBeanMethods = false)
+	@Conditional(PooledDataSourceCondition.class)
+	@ConditionalOnMissingBean({ DataSource.class, XADataSource.class })
+	@Import({ DataSourceConfiguration.Hikari.class, DataSourceConfiguration.Tomcat.class,
+			DataSourceConfiguration.Dbcp2.class, DataSourceConfiguration.OracleUcp.class,
+			DataSourceConfiguration.Generic.class, DataSourceJmxConfiguration.class })
+	protected static class PooledDataSourceConfiguration {
+                                //数据库连接信息，看源码内部包含DataSourceProperties数据源配置信息这个对象。
+		@Bean
+		@ConditionalOnMissingBean(JdbcConnectionDetails.class)
+		PropertiesJdbcConnectionDetails jdbcConnectionDetails(DataSourceProperties properties) {
+			return new PropertiesJdbcConnectionDetails(properties);
+		}
+
+	}
+}
+```
+我们进入这个类DataSourceConfiguration.Hikari。
+```java
+   @Configuration(proxyBeanMethods = false)
+	@ConditionalOnClass(HikariDataSource.class)
+	@ConditionalOnMissingBean(DataSource.class)
+	@ConditionalOnProperty(name = "spring.datasource.type", havingValue = "com.zaxxer.hikari.HikariDataSource",
+			matchIfMissing = true)
+	static class Hikari {
+
+		@Bean
+		static HikariJdbcConnectionDetailsBeanPostProcessor jdbcConnectionDetailsHikariBeanPostProcessor(
+				ObjectProvider<JdbcConnectionDetails> connectionDetailsProvider) {
+			return new HikariJdbcConnectionDetailsBeanPostProcessor(connectionDetailsProvider);
+		}
+                                     //重点代码，创建数据源对象
+                                     //这里创建Datasource数据源对象依赖DataSourceProperties和JdbcConnectionDetails对象。
+                                        //PropertiesJdbcConnectionDetails是DataSourceProperties的适配对象，不作过多解读。
+                                        //重点解读一下DataSourceProperties这个类
+		@Bean
+		@ConfigurationProperties(prefix = "spring.datasource.hikari")
+		HikariDataSource dataSource(DataSourceProperties properties, JdbcConnectionDetails connectionDetails) {
+			HikariDataSource dataSource = createDataSource(connectionDetails, HikariDataSource.class,
+					properties.getClassLoader());
+			if (StringUtils.hasText(properties.getName())) {
+				dataSource.setPoolName(properties.getName());
+			}
+			return dataSource;
+		}
+
+	}
+```
+接下来重点解读一下DataSourceProperties这个类。
+
+## 2.DataSourceProperties
+
+### 2.1 DataSourceProperties的注册和实例化
+
+DataSourceProperties是解析和存储数据库配置的Bean，看属性和功能应和上面示例的DataSourcePropertiesBean一样。接下来要重点关注：
+ 1.DataSourceProperties如何创建和何处创建？---注解Bean和创建Bean。
+ 2.DataSourceProperties内部的各项属性(字段)如何获取到配置项文件的配置值？----属性绑定。
+
+相对于PropertiesJdbcConnectionDetails由应用显式创建(如下)，DataSourceProperties这个对象并未找到显式创建的代码。因此可以推断这个Bean应该首先在invokeBeanFactoryPostProcessors这里通过某一个Registrar完成
+BeanDefinition的注册，注册Bean信息到容器的beanDefinitionMap里面。然后finishBeanFactoryInitialization完成实例化真正创建这个对象。
+
+```java
+                        //显式创建Bean
+        @Bean
+		@ConditionalOnMissingBean(JdbcConnectionDetails.class)
+		PropertiesJdbcConnectionDetails jdbcConnectionDetails(DataSourceProperties properties) {
+			return new PropertiesJdbcConnectionDetails(properties);
+		}
+```
+
+我们看下DataSourceProperties这个类。
+```java
+@ConfigurationProperties(prefix = "spring.datasource")
+public class DataSourceProperties implements BeanClassLoaderAware, InitializingBean {
+
+    private ClassLoader classLoader;
+
+    /**
+     * Whether to generate a random datasource name.
+     */
+    private boolean generateUniqueName = true;
+
+    /**
+     * Datasource name to use if "generate-unique-name" is false. Defaults to "testdb"
+     * when using an embedded database, otherwise null.
+     */
+    private String name;
+
+    /**
+     * Fully qualified name of the connection pool implementation to use. By default, it
+     * is auto-detected from the classpath.
+     */
+    private Class<? extends DataSource> type;
+    //......
+}
+```
+这里定义了各项配置项如name、driver-class-name、url、username、password，这些配置项需要使用'spring.datasource'前缀。<br>
+然后重点看一下@ConfigurationProperties这个注解:
+```java
+/**
+ * Annotation for externalized configuration. Add this to a class definition or a
+ * {@code @Bean} method in a {@code @Configuration} class if you want to bind and validate
+ * some external Properties (e.g. from a .properties file).
+ * <p>
+ * Binding is either performed by calling setters on the annotated class or, if
+ * {@link ConstructorBinding @ConstructorBinding} is in use, by binding to the constructor
+ * parameters.
+ * <p>
+ * Note that contrary to {@code @Value}, SpEL expressions are not evaluated since property
+ * values are externalized.
+ *
+ * @author Dave Syer
+ * @since 1.0.0
+ * @see ConfigurationPropertiesScan
+ * @see ConstructorBinding
+ * @see ConfigurationPropertiesBindingPostProcessor
+ * @see EnableConfigurationProperties
+ */
+@Target({ ElementType.TYPE, ElementType.METHOD })
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Indexed
+public @interface ConfigurationProperties {
+
+	/**
+	 * The prefix of the properties that are valid to bind to this object. Synonym for
+	 * {@link #prefix()}. A valid prefix is defined by one or more words separated with
+	 * dots (e.g. {@code "acme.system.feature"}).
+	 * @return the prefix of the properties to bind
+	 */
+	@AliasFor("prefix")
+	String value() default "";
+
+	/**
+	 * The prefix of the properties that are valid to bind to this object. Synonym for
+	 * {@link #value()}. A valid prefix is defined by one or more words separated with
+	 * dots (e.g. {@code "acme.system.feature"}).
+	 * @return the prefix of the properties to bind
+	 */
+	@AliasFor("value")
+	String prefix() default "";
+
+	/**
+	 * Flag to indicate that when binding to this object invalid fields should be ignored.
+	 * Invalid means invalid according to the binder that is used, and usually this means
+	 * fields of the wrong type (or that cannot be coerced into the correct type).
+	 * @return the flag value (default false)
+	 */
+	boolean ignoreInvalidFields() default false;
+
+	/**
+	 * Flag to indicate that when binding to this object unknown fields should be ignored.
+	 * An unknown field could be a sign of a mistake in the Properties.
+	 * @return the flag value (default true)
+	 */
+	boolean ignoreUnknownFields() default true;
+
+}
+
+```
+这个注解标识一个类型是自动配置类的读取配置项属性的PropertiesBean。<br>
+进入EnableConfigurationProperties注解，来到EnableConfigurationPropertiesRegistrar这个类。<br>
+EnableConfigurationPropertiesRegistrar父类是ImportBeanDefinitionRegistrar，用来引入注册Bean的信息，就是额外添加BeanDefinition信息到容器中。类似的有AspectJAutoProxyRegistrar，MapperScannerRegistrar(来自mybatis)等。
+
+```java
+class EnableConfigurationPropertiesRegistrar implements ImportBeanDefinitionRegistrar {
+
+	private static final String METHOD_VALIDATION_EXCLUDE_FILTER_BEAN_NAME = Conventions
+		.getQualifiedAttributeName(EnableConfigurationPropertiesRegistrar.class, "methodValidationExcludeFilter");
+
+	@Override
+	public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+		registerInfrastructureBeans(registry);
+		registerMethodValidationExcludeFilter(registry);
+		ConfigurationPropertiesBeanRegistrar beanRegistrar = new ConfigurationPropertiesBeanRegistrar(registry);
+		getTypes(metadata).forEach(beanRegistrar::register);
+	}
+
+	private Set<Class<?>> getTypes(AnnotationMetadata metadata) {
+		return metadata.getAnnotations()
+			.stream(EnableConfigurationProperties.class)
+			.flatMap((annotation) -> Arrays.stream(annotation.getClassArray(MergedAnnotation.VALUE)))
+			.filter((type) -> void.class != type)
+			.collect(Collectors.toSet());
+	}
+
+	static void registerInfrastructureBeans(BeanDefinitionRegistry registry) {
+                                    //注册ConfigurationPropertiesBindingPostProcessor和ConfigurationPropertiesBinderFactory，只会注册一次
+		ConfigurationPropertiesBindingPostProcessor.register(registry);
+                                    //BoundConfigurationProperties,只会注册一次
+		BoundConfigurationProperties.register(registry);
+	}
+
+	static void registerMethodValidationExcludeFilter(BeanDefinitionRegistry registry) {
+		if (!registry.containsBeanDefinition(METHOD_VALIDATION_EXCLUDE_FILTER_BEAN_NAME)) {
+			BeanDefinition definition = BeanDefinitionBuilder
+				.rootBeanDefinition(MethodValidationExcludeFilter.class, "byAnnotation")
+				.addConstructorArgValue(ConfigurationProperties.class)
+				.setRole(BeanDefinition.ROLE_INFRASTRUCTURE)
+				.getBeanDefinition();
+			registry.registerBeanDefinition(METHOD_VALIDATION_EXCLUDE_FILTER_BEAN_NAME, definition);
+		}
+	}
+
+}
+
+```
+
+跟踪这个类处理DatasourceAutoConfiguration的过程。
+
+![EnableConfigurationPropertiesRegistrar](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-31-springboot_source_code_reading_3/EnableConfigurationPropertiesRegistrar.png)
+
+继续来到ConfigurationPropertiesBeanRegistrar这个类,这里注册了DataSourceProperties到容器中，后续容器会自动创建这个Bean对象。
+
+```java
+void register(Class<?> type) {
+		MergedAnnotation<ConfigurationProperties> annotation = MergedAnnotations
+			.from(type, SearchStrategy.TYPE_HIERARCHY)
+			.get(ConfigurationProperties.class);
+		register(type, annotation);
+	}
+
+	void register(Class<?> type, MergedAnnotation<ConfigurationProperties> annotation) {
+		String name = getName(type, annotation);
+		if (!containsBeanDefinition(name)) {
+			registerBeanDefinition(name, type, annotation);
+		}
+	}
+```
+执行流程如图：
+![ConfigurationPropertiesBeanRegistrar](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-31-springboot_source_code_reading_3/ConfigurationPropertiesBeanRegistrar.png)
+
+到这里，我们知道了：被@ConfigurationProperties注解修饰的DataSourceProperties已经注册到容器了，并由容器去实例化。其他@ConfigurationProperties注解修饰的XXXProperties也是同理。
+
+既然DataSourceProperties的注册和实例化(finishBeanFactoryInitialization方法内)已经完成了，接下来要去解答配置文件的配置项如何注入到DataSourceProperties字段中，也就是DataSourceProperties的每个属性如何<strong>绑定</strong>配置项文件的配置。
+
+### 2.2 配置文件属性解析和绑定
+
+属性绑定简单说就对DataSourceProperties的字段赋值。
+```java
+@ConfigurationProperties(prefix = "spring.datasource")
+public class DataSourceProperties implements BeanClassLoaderAware, InitializingBean {
+
+    private ClassLoader classLoader;
+
+    /**
+     * Whether to generate a random datasource name.
+     */
+    private boolean generateUniqueName = true;
+
+    /**
+     * Datasource name to use if "generate-unique-name" is false. Defaults to "testdb"
+     * when using an embedded database, otherwise null.
+     */
+    private String name;
+
+    /**
+     * Fully qualified name of the connection pool implementation to use. By default, it
+     * is auto-detected from the classpath.
+     */
+    private Class<? extends DataSource> type;
+
+    /**
+     * Fully qualified name of the JDBC driver. Auto-detected based on the URL by default.
+     */
+    private String driverClassName;
+
+    /**
+     * JDBC URL of the database.
+     */
+    private String url;
+                    //......
+}
+```
+比如说如何设置url的值。
+EnableConfigurationPropertiesRegistrar中注册了ConfigurationPropertiesBindingPostProcessor和ConfigurationPropertiesBinder这两个组件，看名字是与属性绑定相关的？<br>
+首先看下ConfigurationPropertiesBindingPostProcessor：
+```java
+@Override
+	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		if (!hasBoundValueObject(beanName)) {
+			bind(ConfigurationPropertiesBean.get(this.applicationContext, bean, beanName));
+		}
+		return bean;
+	}
+```
+之前的文件解读过BeanPostProcessor#postProcessBeforeInitialization在Bean已经实例化，尚未初始化的时候执行。参考这篇文章[Bean的创建过程和Bean的生命周期](https://zouhuanli.github.io/spring_source_code_reading_6/)。
+其在Spring源码中调用的位置是AbstractAutowireCapableBeanFactory#applyBeanPostProcessorsBeforeInitialization方法。<br>
+因此创建DataSourceProperties这个Bean已经实例化，尚未初始化的时候，会执行下面代码：
+```java
+@Override
+	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		if (!hasBoundValueObject(beanName)) {
+			bind(ConfigurationPropertiesBean.get(this.applicationContext, bean, beanName));
+		}
+		return bean;
+	}
+    
+	private void bind(ConfigurationPropertiesBean bean) {
+		if (bean == null) {
+			return;
+		}
+		Assert.state(bean.asBindTarget().getBindMethod() != BindMethod.VALUE_OBJECT,
+				"Cannot bind @ConfigurationProperties for bean '" + bean.getName()
+						+ "'. Ensure that @ConstructorBinding has not been applied to regular bean");
+		try {
+			this.binder.bind(bean);
+		}
+		catch (Exception ex) {
+			throw new ConfigurationPropertiesBindException(bean, ex);
+		}
+	}
+```
+然后我们来到ConfigurationPropertiesBinder。
+```java
+BindResult<?> bind(ConfigurationPropertiesBean propertiesBean) {
+		Bindable<?> target = propertiesBean.asBindTarget();
+		ConfigurationProperties annotation = propertiesBean.getAnnotation();
+		BindHandler bindHandler = getBindHandler(target, annotation);
+		return getBinder().bind(annotation.prefix(), target, bindHandler);
+	}
+```
+这里是实现PropertiesBean的属性绑定的功能的代码了。<br>
+
+![ConfigurationPropertiesBinder](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-31-springboot_source_code_reading_3/ConfigurationPropertiesBinder.png)
+
+我们跟踪BindHandler#bind方法来到这个方法。
+```java
+private Object bindDataObject(ConfigurationPropertyName name, Bindable<?> target, BindHandler handler,
+			Context context, boolean allowRecursiveBinding) {
+		if (isUnbindableBean(name, target, context)) {
+			return null;
+		}
+		Class<?> type = target.getType().resolve(Object.class);
+		BindMethod bindMethod = target.getBindMethod();
+		if (!allowRecursiveBinding && context.isBindingDataObject(type)) {
+			return null;
+		}
+		DataObjectPropertyBinder propertyBinder = (propertyName, propertyTarget) -> bind(name.append(propertyName),
+				propertyTarget, handler, context, false, false);
+		return context.withDataObject(type, () -> {
+			for (DataObjectBinder dataObjectBinder : this.dataObjectBinders.get(bindMethod)) {
+                                        //属性绑定
+				Object instance = dataObjectBinder.bind(name, target, context, propertyBinder);
+				if (instance != null) {
+					return instance;
+				}
+			}
+			return null;
+		});
+	}
+
+```
+继续来到JavaBeanBinder#bind方法。
+```java
+private <T> boolean bind(DataObjectPropertyBinder propertyBinder, Bean<T> bean, BeanSupplier<T> beanSupplier,
+			Context context) {
+		boolean bound = false;
+                                    //这里遍历属性集合，处理每一个属性
+                                     //这里就是[generate-unique-name, class-loader, driver-class-name, embedded-database-connection, jndi-name, name, password, type, url, username, xa, bean-class-loader]
+                                    //对应DatasourceProperties的每个字段
+		for (BeanProperty beanProperty : bean.getProperties().values()) {
+			bound |= bind(beanSupplier, propertyBinder, beanProperty);
+			context.clearConfigurationProperty();
+		}
+		return bound;
+```
+
+这里就是具体绑定一项属性了,如spring.datasource.password。
+```java
+private <T> Object bindObject(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler,
+			Context context, boolean allowRecursiveBinding) {
+                        //查找配置的值
+		ConfigurationProperty property = findProperty(name, target, context);
+		if (property == null && context.depth != 0 && containsNoDescendantOf(context.getSources(), name)) {
+			return null;
+		}
+		AggregateBinder<?> aggregateBinder = getAggregateBinder(target, context);
+		if (aggregateBinder != null) {
+			return bindAggregate(name, target, handler, context, aggregateBinder);
+		}
+		if (property != null) {
+			try {
+                        //绑定和注入
+				return bindProperty(target, context, property);
+			}
+			catch (ConverterNotFoundException ex) {
+				// We might still be able to bind it using the recursive binders
+				Object instance = bindDataObject(name, target, handler, context, allowRecursiveBinding);
+				if (instance != null) {
+					return instance;
+				}
+				throw ex;
+			}
+		}
+		return bindDataObject(name, target, handler, context, allowRecursiveBinding);
+	}
+```
+
+![bindObject](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-10-31-springboot_source_code_reading_3/bindObject.png)
+
+最后在：
+```java
+if (property.isSettable()) {
+			property.setValue(beanSupplier, bound);
+		}
+```
+使用反射调用setter来设置DatasourceProperties的对应字段的值。<br>
+
+到这里DatasourceProperties已经创建成功，并且读取了对应的配置的值。
+
+### 2.3 创建Datasource
+
+回到DataSourceConfiguration$Hikari这个配置类。
+```java
+@Bean
+		@ConfigurationProperties(prefix = "spring.datasource.hikari")
+		HikariDataSource dataSource(DataSourceProperties properties, JdbcConnectionDetails connectionDetails) {
+			HikariDataSource dataSource = createDataSource(connectionDetails, HikariDataSource.class,
+					properties.getClassLoader());
+			if (StringUtils.hasText(properties.getName())) {
+				dataSource.setPoolName(properties.getName());
+			}
+			return dataSource;
+		}
+```
+上面的解读过程中DataSourceProperties、JdbcConnectionDetails已经创建完成了，现在可以成功创建HikariDataSource了。<br>
+
+要重点理解DataSourceProperties的注册和实例化(创建对象)、<strong>属性绑定(解析和存储配置文件的配置值)</strong>这两个流程,整体流程建议按照文章的解读内容结合实际调试boot源码来加深理解。
 
 # 四、参考材料
 
