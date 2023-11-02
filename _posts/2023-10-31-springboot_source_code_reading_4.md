@@ -423,7 +423,7 @@ public class MybatisAutoConfiguration implements InitializingBean {
 }
 ```
 可以看到这里和注解方式是基本一致的。<br>
-再看下MybatisProperties这个mybatis的配置对象，设置了配置项的前置是mybatis,如'mybatis:mapper-locations: classpath:mappers/*.xml'设置了Mapper的xml文件路径。
+再看下MybatisProperties这个mybatis的配置对象，设置了配置项的前缀是mybatis,如'mybatis:mapper-locations: classpath:mappers/*.xml'设置了Mapper的xml文件路径。
 
 ```java
 @ConfigurationProperties(prefix = MybatisProperties.MYBATIS_PREFIX)
