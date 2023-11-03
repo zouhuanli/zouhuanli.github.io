@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文是SpringBoot源码阅读计划的第四篇文章，本文简单解读一下SpringBoot开启注解事务和Mybatis集成的源代码。<br>
+本文是SpringBoot源码阅读计划的第四篇文章，本文简单解读一下内置的Servlet容器(tomcat)执行流程的源代码。<br>
 
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。<br>
 
