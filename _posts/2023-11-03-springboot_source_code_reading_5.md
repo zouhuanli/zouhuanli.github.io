@@ -823,7 +823,7 @@ public class MySimpleServlet extends HttpServlet {
     }
 }
 ```
-过滤器。
+创建过滤器。
 ```java
 @WebFilter(urlPatterns = "/*")
 public class MyFilter  extends HttpFilter {
@@ -867,7 +867,7 @@ public class MyFilter  extends HttpFilter {
 }
 ```
 
-监听器。
+创建监听器。
 ```java
 @WebListener(value = "MyListener")
 public class MyListener implements ServletContextListener {
@@ -1010,7 +1010,7 @@ private void selfInitialize(ServletContext servletContext) throws ServletExcepti
 
 ![ServletContextInitializer](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-03-springboot_source_code_reading_5/ServletContextInitializer.png)
 
-看这个图应该可以了解到这个接口主要用以注册Servlet、Filter、Listener这三类组件。
+看这个图应该可以了解到这个接口主要用以注册Servlet、Filter、Listener这三类组件。<br>
 首先ServletContextInitializerBeans这边把Servlet、Filter、Listener的Bean实例转换为RegistrationBean.
 ```java
 public ServletContextInitializerBeans(ListableBeanFactory beanFactory,
@@ -1091,7 +1091,8 @@ protected final void register(String description, ServletContext servletContext)
         configure(registration);
         }
 ```
-这里分为两步，注册到ServletContext和进行配置。注册到ServletContext就是简单的 servletContext.addXXX方法。
+这里分为两步，注册到ServletContext和进行配置。<br>
+注册到ServletContext就是简单的servletContext.addXXX方法。
 ```java
 	@Override
 	protected Dynamic addRegistration(String description, ServletContext servletContext) {
@@ -1100,7 +1101,7 @@ protected final void register(String description, ServletContext servletContext)
 	}
 ```
 
-配置组件的方法则是配置Servlet和Filter。配置Filter如下
+配置组件的方法则是配置Servlet和Filter的相关属性。例如配置Filter的方法，如下：
 ```java
 	@Override
 	protected void configure(FilterRegistration.Dynamic registration) {
@@ -1139,7 +1140,7 @@ protected final void register(String description, ServletContext servletContext)
 这样Filter、Dispatcher就创建成功并注册到ServletContext里。<br>
 
 
-在示例工程执行过程中，这里没有找到MyListener这个监听器的注册流程。最后在StandardContext#listenerStart这个方法
+在示例工程执行过程中，这里并没有找到MyListener这个监听器的注册流程。最后在StandardContext#listenerStart这个方法找到注册MyListener的源码。
 ```java
  // Instantiate the required listeners
                             //com.homura.myspringboot.ee.MyListener
@@ -1179,7 +1180,7 @@ protected final void register(String description, ServletContext servletContext)
             }
         }
 ```
-而findApplicationListeners()内applicationListeners，有在创建TomcatServer配置Tomcat的Context时候的这个TomcatServletWebServerFactory#configureContext方法内注冊到Context的。
+而findApplicationListeners()内applicationListeners监听器列表，由在创建TomcatServer配置Tomcat的Context时候的这个TomcatServletWebServerFactory#configureContext方法内注冊到Context的。
 代码如下：
 ```java
 	for (String webListenerClassName : getWebListenerClassNames()) {
@@ -1187,7 +1188,8 @@ protected final void register(String description, ServletContext servletContext)
 		}
 ```
 
-简单总结一下流程：<br>
+
+简单总结一下注册这三类组件的流程：<br>
 1. ServletComponentScan注解引入的ServletComponentScanRegistrar注册了ServletComponentRegisteringPostProcessor，由ServletComponentRegisteringPostProcessor注册
 WebFilter、WebListener、WebServlet注解标识的Bean。<br>
 2. ServletContextInitializerBeans将其适配为XXXRegistrationBean，RegistrationBean实现了ServletContextInitializer接口。<br>
