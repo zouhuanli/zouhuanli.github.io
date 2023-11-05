@@ -1193,7 +1193,7 @@ protected final void register(String description, ServletContext servletContext)
 1. ServletComponentScan注解引入的ServletComponentScanRegistrar注册了ServletComponentRegisteringPostProcessor，由ServletComponentRegisteringPostProcessor注册
 WebFilter、WebListener、WebServlet注解标识的Bean。<br>
 2. ServletContextInitializerBeans将其适配为XXXRegistrationBean，RegistrationBean实现了ServletContextInitializer接口。<br>
-3. 创建WebServer过程中回调用ServletContextInitializer的onStartup方法注册和配置Filter、Listener、Servlet等组件。<br>
+3. 创建WebServer过程中调用ServletContextInitializer的onStartup方法注册和配置Filter、Listener、Servlet等组件。<br>
 # 五、参考材料
 
 1.《Spring Boot Reference Documentation》(version 3.1.5)<br>
