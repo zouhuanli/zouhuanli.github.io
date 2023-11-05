@@ -672,10 +672,10 @@ private void createWebServer() {
 		ServletContext servletContext = getServletContext();
 		if (webServer == null && servletContext == null) {
 			StartupStep createWebServer = getApplicationStartup().start("spring.boot.webserver.create");
-                                        //创建ServletWebServerFactory的Bean，上面已经注解到容器了，这里直接就是getbean创建对象了。
+                                        //创建ServletWebServerFactory的Bean，上面已经创建了TomcatServletWebServerFactory，这里直接就是getbean获取。
 			ServletWebServerFactory factory = getWebServerFactory();
 			createWebServer.tag("factory", factory.getClass().toString());
-                                    // 执行ServletContextInitializer的ononStartup这个监听方法。
+                                    // 执行ServletContextInitializer的onStartup这个监听方法。
                                      //注意重点看这行代码.创建WebServer（Tomcat），启动Servlet容器，默认是Tomcat
 			this.webServer = factory.getWebServer(getSelfInitializer());
 			createWebServer.end();
@@ -742,7 +742,7 @@ private void selfInitialize(ServletContext servletContext) throws ServletExcepti
 	}
 ```
 
-再进入TomcatWebServer。
+再进入TomcatWebServer的构造器。
 
 ```java
 public TomcatWebServer(Tomcat tomcat, boolean autoStart, Shutdown shutdown) {
@@ -755,7 +755,7 @@ public TomcatWebServer(Tomcat tomcat, boolean autoStart, Shutdown shutdown) {
 	}
 ```
 
-初始化方法内启动了Tomcat。
+初始化方法内启动Tomcat。
 
 ```java
 private void initialize() throws WebServerException {
@@ -803,7 +803,7 @@ private void initialize() throws WebServerException {
 
 到这，TomcatServer就创建并启动了。
 
-# 四、注册Servlet组件的相关注解(@ServletComponentScan、@WebServlet、@WebFilter以及@WebListener）
+# 四、注册Servlet组件的相关注解(@ServletComponentScan、@WebServlet、@WebFilter以及@WebListener）的解读
 
 ## 4.1 简单使用
 
@@ -1192,7 +1192,7 @@ protected final void register(String description, ServletContext servletContext)
 WebFilter、WebListener、WebServlet注解标识的Bean。<br>
 2. ServletContextInitializerBeans将其适配为XXXRegistrationBean，RegistrationBean实现了ServletContextInitializer接口。<br>
 3. 创建WebServer过程中回调用ServletContextInitializer的onStartup方法注册和配置Filter、Listener、Servlet等组件。<br>
-# 四、参考材料
+# 五、参考材料
 
 1.《Spring Boot Reference Documentation》(version 3.1.5)<br>
 2.SpringBoot源码(版本3.1.3)
