@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文是SpringBoot源码阅读计划的第六篇文章，Jar启动过程和@Import、@Conditional注解。<br>
+本文是SpringBoot源码阅读计划的第六篇文章，解读一下Jar启动过程和@Import、@Conditional注解。<br>
 本篇文章算是对[<<自动配置实现原理>>](https://zouhuanli.github.io/springboot_source_code_reading_3/)的一个补充。
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。<br>
 
