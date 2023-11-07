@@ -57,7 +57,7 @@ Logback是Log4j1的改进和升级版本，是SpringBoot默认集成的日志框
 ## 2.7 Log4j2
 
 Apache在logback之后开发了log4j2，是log4j1的升级版本，但是！和log4j1完全不兼容。<br>
-使用log4j2一般引入log4j2-core和log4j2-api,如果使用slf4j-api作为门面，需要引入log4j-slf4j-impl作为log4j2自带的实现slf4j-api的桥连包。<br>
+使用log4j2一般引入log4j-core和log4j-api,如果使用slf4j-api作为门面，需要引入log4j-slf4j-impl作为log4j2自带的实现slf4j-api的桥连包。<br>
 如:
 
 ```xml
@@ -88,11 +88,11 @@ Apache在logback之后开发了log4j2，是log4j1的升级版本，但是！和l
 # 三、Java日志各种产品的关系
 
 在slf4j出现之后，出现了各种桥连包，将具体的日志产品桥连到slf4-api，从而通过使用slf4j-api来使用具体的日志产品。<br>
-slf4-api本身自有接口，必须绑定具体日志实现才能使用，绑定相关的桥连包如下：
+slf4-api本身只有接口，必须绑定具体日志实现才能使用，绑定相关的桥连包如下：
 
 ![concrete-bindings](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-07-java_logging_log_arch/concrete-bindings.png)
 
-桥连包极大的方便了开发者自由切换日志产品，只需要切换到其他日志实现，添加对应的桥连包即可。<br>
+桥连包极大的方便了开发者自由切换日志产品，更换日志产品时候只需要切换到其他日志实现，添加对应的桥连包即可。<br>
 各种桥连包和日志产品的关系如下图：
 
 ![slf4j-bridge](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-07-java_logging_log_arch/slf4j-bridge.png)
@@ -186,9 +186,10 @@ slf4j-jcl.jar不能同时部署。前一个jar文件将导致JCL将日志系统�
 ```
 首先这里将JUL、JCL都桥连到了SLF4J，SLF4J由桥连到了Log4j1，而工程里面已经没有Log4j1依赖包。Log4j1通过log4j-1.2-api桥连到了Log4j2,这是一个log4j1升级到log4j2的包，由log4j2官方提供。<br>
 Log4j1通过log4j-1.2-api桥连到了Log4j2,这样Log4j1升级到Log4j2就不需要修改应用的代码。<br>
-最后的结果是：Log4j1，slf4j,jul,jcl都桥连到了log4j2。
+最后的结果是：Log4j1，slf4j,jul,jcl都桥连到了log4j2。 简单测试如下。
 
-Log4j1的测试类如下：
+1. Log4j1的测试。<br>
+测试类如下：
 ```java
 import org.apache.log4j.Logger;
 
@@ -219,7 +220,8 @@ public class Log4j1Test {
 ```
 这里桥连到log4j2去处理了。
 
-Log4j2的测试类如下：
+2. Log4j2的测试.<br>
+测试类如下：
 ```java
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
