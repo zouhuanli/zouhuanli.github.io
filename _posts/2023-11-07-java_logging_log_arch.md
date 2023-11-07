@@ -190,6 +190,7 @@ Log4j1通过log4j-1.2-api桥连到了Log4j2,这样Log4j1升级到Log4j2就不需
 
 1. Log4j1的测试。<br>
 测试类如下：
+
 ```java
 import org.apache.log4j.Logger;
 
@@ -205,6 +206,7 @@ public class Log4j1Test {
 ```
 
 跟踪执行流程来到这里：
+
 ```java
     private final org.apache.logging.log4j.Logger logger;
 
@@ -221,6 +223,7 @@ public class Log4j1Test {
 这里桥连到log4j2去处理了。
 
 2. Log4j2的测试.<br>
+
 测试类如下：
 ```java
 import org.slf4j.Logger;
@@ -236,7 +239,9 @@ public class Log4j2Test {
 }
 
 ```
+
 在StaticLoggerBinder这里绑定了log4j1的日志实现。
+
 ```java
  private StaticLoggerBinder() {
         loggerFactory = new Log4jLoggerFactory();
@@ -250,6 +255,7 @@ public class Log4j2Test {
 ```
 
 然后在Log4jLoggerFactory这里创建Logger:
+
 ```java
  public Logger getLogger(String name) {
         Logger slf4jLogger = loggerMap.get(name);
@@ -268,6 +274,7 @@ public class Log4j2Test {
         }
     }
 ```
+
 最后转接到log4j2的实现，使用log4j2日志实现输出日志。<br>
 
 为什么要使用这么多桥连包转接？<br>
