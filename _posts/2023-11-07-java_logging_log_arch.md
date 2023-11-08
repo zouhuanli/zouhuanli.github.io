@@ -188,7 +188,7 @@ slf4j-jcl.jar不能同时部署。前一个jar文件将导致JCL将日志系统�
 Log4j1通过log4j-1.2-api桥连到了Log4j2,这样Log4j1升级到Log4j2就不需要修改应用的代码。<br>
 最后的结果是：Log4j1，slf4j,jul,jcl都桥连到了log4j2。 简单测试如下。
 
-1. Log4j1的测试。<br>
+1.Log4j1的测试。<br>
 测试类如下：
 
 ```java
@@ -220,9 +220,9 @@ public class Log4j1Test {
         rendererMap = ((RendererSupport) LogManager.getLoggerRepository()).getRendererMap();
     }
 ```
-这里桥连到log4j2去处理了。
+这里桥连到log4j2去处理了。<br>
 
-2. Log4j2的测试.<br>
+2.Log4j2的测试.<br>
 
 测试类如下：
 ```java
