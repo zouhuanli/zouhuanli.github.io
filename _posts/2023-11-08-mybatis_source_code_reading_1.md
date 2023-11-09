@@ -15,8 +15,8 @@ author: zouhuanli
 
 ## 一、基本介绍和简单使用
 
-Mybatis是一款轻量级的ORM框架，支持高级映射、动态SQL，通过简单的注解或XML来使用简单的Java POJO来操作数据库。动态SQL是Mybatis最显著的优点，极大的提高了SQL操作的灵活性。
-使用Mybatis是很简单的，首先mybatis本身可以作为一个独立的框架或者jar使用。只需要应用引入依赖即可。
+Mybatis是一款轻量级的ORM框架，支持高级映射、动态SQL，通过简单的注解或XML来使用简单的Java POJO来操作数据库。动态SQL是Mybatis最显著的优点，极大的提高了SQL操作的灵活性。<br>
+使用Mybatis是很简单的，首先mybatis本身可以作为一个独立的框架或者jar使用。只需要应用引入依赖即可。<br>
 ```xml
   <dependency>
       <groupId>org.mybatis</groupId>
@@ -43,8 +43,7 @@ try (SqlSession session = sqlSessionFactory.openSession()) {
         }
 ```
 别看示例很简陋，这已经包含了mybatis的全部流程:<br>
-通过配置文件构建SqlSessionFactory、Configuration，解析和注册全部的配置(静态配置、Sql、ResultMap等)，注册Mapper接口和MapperProxy。<br>
-通过MapperProxy执行SQL方法，得到执行结果和解析执行结果。
+通过配置文件构建SqlSessionFactory、Configuration，解析和注册全部的配置(静态配置、Sql、ResultMap等)，注册Mapper接口和MapperProxy。通过MapperProxy执行SQL方法，得到执行结果和解析执行结果。<br>
 
 mybatis的源码远没有spring源码复杂，阅读mybatis源码会比spring源码简单。当然两者不能简单比较。<br>
 通过SpringBoot使用mybatis只需要引入mybatis-spring-boot-starter。<br>
@@ -79,10 +78,10 @@ mybatis的源码远没有spring源码复杂，阅读mybatis源码会比spring源
           ExecutorType executorType = this.properties.getExecutorType();
           if (executorType != null) {
           return new SqlSessionTemplate(sqlSessionFactory, executorType);
-          } else {
+            } else {
           return new SqlSessionTemplate(sqlSessionFactory);
-          }
-          }
+                }
+            }
 ```
 添加MapperScan自动扫描Mapper接口和注册MapperProxy。
 ```java
@@ -95,7 +94,9 @@ public class MyBatisConfig {
 }
 
 ```
+
 ## 二、整体架构
+
 mybatis的分层结构如下:
 
 ![mybatis_arch](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-08-mybatis_source_code_reading_1/mybatis_arch.png)
@@ -105,7 +106,9 @@ mybatis的分层结构如下:
 支持层主要是XML和注解配置，事务、连接池、缓存。<br>
 
 ## 三、主要组件和关系
-Mybatis主要的核心组件有(引用自![https://louluan.blog.csdn.net/article/details/40422941](https://louluan.blog.csdn.net/article/details/40422941))：
+
+Mybatis主要的核心组件有(引用自[https://louluan.blog.csdn.net/article/details/40422941](https://louluan.blog.csdn.net/article/details/40422941))：
+
 * SqlSessionFactory:SqlSession的创建工厂，负责创建SqlSession
 * SqlSession:作为MyBatis工作的主要顶层API，表示和数据库交互的会话，完成必要数据库增删改查功能
 * Executor:MyBatis执行器，是MyBatis 调度的核心，负责SQL语句的生成和查询缓存的维护
@@ -122,7 +125,7 @@ Mybatis主要的核心组件有(引用自![https://louluan.blog.csdn.net/article
 
 解读Mybatis的源码主要把握两个脉络：<br>
 * 1.SqlSessionFactory的构造过程，包括创建SqlSessionFactory、Configuration、Mapper接口注册、SQL解析和注册、MapperProxy的创建。这些主要是应用启动时候全部加载，解析，解析完成的。<br>
-* 2.SQL方法的执行过程，具体指的是MapperProxy的invoke方法开始涉及的SqlSession、SqlSessionTemplate、Executor、XXXHandler等对SQL方法的执行处理过程。
+* 2.SQL方法的执行过程，具体指的是MapperProxy的invoke方法开始涉及的SqlSession、SqlSessionTemplate、Executor、XXXHandler等对SQL方法的执行处理过程。这些是具体执行一个SQL方法的流程。
 
 ## 四、核心流程
 ### 4.1 初始化和SqlSessionFactory创建
@@ -154,10 +157,8 @@ protected SqlSessionFactory buildSqlSessionFactory() throws Exception {
 ```
 Configuration是一个非常大的配置类，注册了Mybatis的全部配置信息。
 
-```java
-
-```
 ### 4.2 MapperProxy的创建过程
+
 我们看下一个普通的Mapper接口。
 ```java
 
@@ -206,8 +207,8 @@ public interface UserMapper {
     User selectByPrimaryKey(@Param("uid") Integer uid);
 }
 ```
-使用该Mapper接口，直接使用Spring自动注入依赖接口。首先接口方法肯定没法直接执行，mybatis是对每一个接口创建一个MapperProxy这样的代理对象来代理所有的接口方法。<br>
-getMapper方法最终会来到下面代码，来创建MapperProxy代理对象。
+要使用该Mapper接口，可以直接使用Spring自动注入依赖接口，其原理是启动时自动创建MapperProxy注册到Spring容器。首先接口方法肯定没法直接执行的，mybatis是对每一个接口创建一个MapperProxy这样的代理对象来代理所有的接口方法。<br>
+session.getMapper方法最终会来到下面代码，来创建MapperProxy代理对象。
 ```java
 public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
     final MapperProxyFactory<T> mapperProxyFactory = (MapperProxyFactory<T>) knownMappers.get(type);
@@ -222,10 +223,10 @@ public <T> T getMapper(Class<T> type, SqlSession sqlSession) {
   }
 ```
 而knownMappers是应用启动时候创建SqlSessionFactory时候注册所有的Mapper接口到这个集合。<br>
-和Spring结合使用会自动扫描Mapper路径和注册MapperProxy，启动时通过ClassPathMapperScanner#processBeanDefinitions方法的注册MapperProxyFactoryBean，MapperProxyFactoryBean是一类factoryBean。
+和Spring结合使用会自动扫描Mapper路径和注册MapperProxy，启动时通过ClassPathMapperScanner#processBeanDefinitions方法的注册MapperProxyFactoryBean，MapperProxyFactoryBean是一类factoryBean，
 MapperProxyFactoryBean最终在Spring容器注册的是MapperProxy对象，其源码如下。
 ```java
-                            //看这个注释
+                            //注意看这个注释
         // the mapper interface is the original class of the bean
       // but, the actual class of the bean is MapperFactoryBean
       definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName); // issue #59
@@ -299,6 +300,6 @@ SQL方法的执行流程如下：
 ![MapperProxy_invoke](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-08-mybatis_source_code_reading_1/MapperProxy_invoke.png)
 
 ## 五、参考材料
-1.https://mybatis.org/mybatis-3/zh/
-2.Mybatis源码(版本3.5.13)
-3.https://louluan.blog.csdn.net/article/details/40422941
+1.https://mybatis.org/mybatis-3/zh/ <br>
+2.Mybatis源码(版本3.5.13) <br>
+3.https://louluan.blog.csdn.net/article/details/40422941 <br>
