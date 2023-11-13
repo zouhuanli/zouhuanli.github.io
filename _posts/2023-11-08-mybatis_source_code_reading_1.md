@@ -116,7 +116,7 @@ Mybatis主要的核心组件有(引用自[https://louluan.blog.csdn.net/article/
 * ParameterHandler:负责对用户传递的参数转换成JDBC Statement 所需要的参数，
 * ResultSetHandler:负责将JDBC返回的ResultSet结果集对象转换成List类型的集合；
 * TypeHandler:负责java数据类型和jdbc数据类型之间的映射和转换
-* MappedStatement:MappedStatement维护了一条<select|update|delete|insert>节点的封装，
+* MappedStatement:MappedStatement维护了一条&lt;select|update|delete|insert>节点的封装，
 * SqlSource:负责根据用户传递的parameterObject，动态地生成SQL语句，将信息封装到BoundSql对象中，并返回
 * BoundSql:表示动态生成的SQL语句以及相应的参数信息
 * Configuration:MyBatis所有的配置信息都维持在Configuration对象之中。
@@ -124,7 +124,7 @@ Mybatis主要的核心组件有(引用自[https://louluan.blog.csdn.net/article/
 这些就是mybatis主要的核心类。<br>
 
 解读Mybatis的源码主要把握两个脉络：<br>
-* 1.SqlSessionFactory的构造过程，包括创建SqlSessionFactory、Configuration、Mapper接口注册、SQL解析和注册、MapperProxy的创建。这些主要是应用启动时候全部加载，解析，解析完成的。<br>
+* 1.SqlSessionFactory的构造过程，包括创建SqlSessionFactory、Configuration、Mapper接口注册、SQL解析和注册、MapperProxy的创建。这些主要是应用启动时候全部加载，解析，注册完成的。<br>
 * 2.SQL方法的执行过程，具体指的是MapperProxy的invoke方法开始涉及的SqlSession、SqlSessionTemplate、Executor、XXXHandler等对SQL方法的执行处理过程。这些是具体执行一个SQL方法的流程。
 
 ## 四、核心流程
