@@ -13,10 +13,10 @@ author: zouhuanli
 
 ## 一、概述
 
-Configuration类是是mybatis的核心配置类，保存了mybatis所有配置信息。既包括mybatis-config.xml和配置文件的配置如cacheEnabled，也包括解析之后生成的配置如mapperRegistry、interceptorChain。
-"每个基于MyBatis的应用都是以一个SqlSessionFactory的实例为核心的。SqlSessionFactory的实例可以通过SqlSessionFactoryBuilder获得。而SqlSessionFactoryBuilder则可以从XML配置文件或一个预先配置的Configuration实例来构建出SqlSessionFactory实例"。
-SqlSessionFactory可以由SqlSessionFactoryBuilder或者SqlSessionFactoryBean创建。
-SqlSessionFactoryBean#getObject方法。
+Configuration类是是mybatis的核心配置类，保存了mybatis所有配置信息。既包括mybatis-config.xml和配置文件的配置如cacheEnabled，也包括解析之后生成的配置如mapperRegistry、interceptorChain。<br>
+"每个基于MyBatis的应用都是以一个SqlSessionFactory的实例为核心的。SqlSessionFactory的实例可以通过SqlSessionFactoryBuilder获得。而SqlSessionFactoryBuilder则可以从XML配置文件或一个预先配置的Configuration实例来构建出SqlSessionFactory实例"。<br>
+SqlSessionFactory可以由SqlSessionFactoryBuilder或者SqlSessionFactoryBean创建。<br>
+SqlSessionFactoryBean#getObject方法。<br>
 
 ```java
   @Override
@@ -29,10 +29,10 @@ SqlSessionFactoryBean#getObject方法。
   }
 ```
 
-SqlSessionFactory顾名思义，就是用来创建SqlSession对象的。SqlSession提供CRUD、提交、回滚、获取Mapper等顶层API。
-SqlSessionFactory一般是一个数据源创建一次，不需要多次创建。而SqlSession的实例不是线程安全的，因此是不能被共享的，所以它的最佳的作用域是请求或方法作用域。也就表明SqlSession应该随时创建后就销毁。
-但SqlSessionTemplate实现了SqlSession，其被配置为了单例对象。SqlSessionTemplate并没有共用一个SqlSession，而是通过SqlSessionInterceptor创建代理对象每次执行Mapper的SQL方法时都创建一下新的SqlSession。
-SqlSessionInterceptor如下：
+SqlSessionFactory顾名思义，就是用来创建SqlSession对象的。SqlSession提供CRUD、提交、回滚、获取Mapper等顶层API。<br>
+SqlSessionFactory一般是一个数据源创建一次，不需要多次创建。而SqlSession的实例不是线程安全的，因此是不能被共享的，所以它的最佳的作用域是请求或方法作用域。也就表明SqlSession应该随时创建后就销毁。<br>
+但SqlSessionTemplate实现了SqlSession，其被配置为了单例对象。SqlSessionTemplate并没有共用一个SqlSession，而是通过SqlSessionInterceptor创建代理对象每次执行Mapper的SQL方法时都创建一下新的SqlSession。<br>
+SqlSessionInterceptor如下：<br>
 ```java
 private class SqlSessionInterceptor implements InvocationHandler {
     @Override
@@ -58,7 +58,7 @@ private class SqlSessionInterceptor implements InvocationHandler {
 
 ## 二、SqlSessionFactory创建过程
 
-我们从MybatisAutoConfiguration#sqlSessionFactory方法作为入口，开始解读SqlSessionFactory创建过程。
+我们从MybatisAutoConfiguration#sqlSessionFactory方法作为入口，开始解读SqlSessionFactory创建过程。<br>
 sqlSessionFactory方法如下：
 ```java
 @Bean
@@ -117,7 +117,7 @@ sqlSessionFactory方法如下：
     return factory.getObject();
   }
 ```
-这里基本就是读取MybatisProperties，设置SqlSessionFactoryBean对应的配置项。
+这里基本就是读取MybatisProperties，设置SqlSessionFactoryBean对应的配置项。<br>
 再进入SqlSessionFactoryBean#getObject方法。
 ```java
 @Override
@@ -129,7 +129,7 @@ sqlSessionFactory方法如下：
     return this.sqlSessionFactory;
   }
 ```
-此处使用afterPropertiesSet()创建sqlSessionFactory。
+此处使用afterPropertiesSet()创建sqlSessionFactory。<br>
 继续进入buildSqlSessionFactory方法，这里就是创建Configuration和sqlSessionFactory的方法了。
 
 ## 三、Configuration的创建过程
@@ -260,7 +260,7 @@ protected SqlSessionFactory buildSqlSessionFactory() throws Exception {
     return this.sqlSessionFactoryBuilder.build(targetConfiguration);
   }
 ```
-可以看到这个方法是解析了所有mybatis的配置，用以创建Configuration对象。
+可以看到这个方法是解析了所有mybatis的配置，用以创建Configuration对象。<br>
 
 ### 3.1 基本配置解析
 
@@ -273,7 +273,8 @@ mybatis的配置如下：
 * plugins（插件）
 * environments（环境配置）
 * databaseIdProvider（数据库厂商标识）
-* mappers（映射器）
+* mappers（映射器） 
+
 和上面方法的顺序一样。
 
 例如下面是解析objectFactory、typeAliases
@@ -299,10 +300,13 @@ Optional.ofNullable(this.objectFactory).ifPresent(targetConfiguration::setObject
 ### 3.2 XML配置解析
 
 来到这行代码：
+
 ```java
 xmlConfigBuilder.parse();
 ```
+
 再来到parseConfiguration方法，如下：
+
 ```java
 private void parseConfiguration(XNode root) {
     try {
@@ -327,19 +331,23 @@ private void parseConfiguration(XNode root) {
     }
   }
 ```
+
 这里是解析mybatis-config.xml里面的XML配置项，我们可以看到这个xml配置是在MybatisProperties之后的，所以这里xml配置会覆盖MybatisProperties设置的。
 
 
 ### 3.3 XMLMapper解析
 
 我们解析进入这行代码：
+
 ```java
 XMLMapperBuilder xmlMapperBuilder = new XMLMapperBuilder(mapperLocation.getInputStream(),
                 targetConfiguration, mapperLocation.toString(), targetConfiguration.getSqlFragments());
             xmlMapperBuilder.parse();
 ```
-这里解析了XMLMapper文件，如UserMapper.xml。
+
+这里解析了XMLMapper文件，如UserMapper.xml。<br>
 继续来到parse方法：
+
 ```java
 public void parse() {
                      //新的XMLMapper解析
@@ -354,7 +362,9 @@ public void parse() {
     parsePendingStatements();
   }
 ```
+
 继续来到configurationElement，这个解析XMLMapper的方法。
+
 ```java
 private void configurationElement(XNode context) {
     try {
@@ -382,6 +392,7 @@ private void configurationElement(XNode context) {
 ```
 
 我们再进入SQL方法的解析源码:
+
 ```java
 private void buildStatementFromContext(List<XNode> list) {
         if (configuration.getDatabaseId() != null) {
@@ -402,7 +413,9 @@ private void buildStatementFromContext(List<XNode> list, String requiredDatabase
             }
         }
 ```
+
 最后来到了statementParser.parseStatementNode()这个方法，解析一个select|insert|update|delete元素。
+
 ```java
 public void parseStatementNode() {
     String id = context.getStringAttribute("id");
@@ -471,6 +484,7 @@ public void parseStatementNode() {
         keyGenerator, keyProperty, keyColumn, databaseId, langDriver, resultSets, dirtySelect);
   }
 ```
+
 这里具体解析一个select|insert|update|delete方法，解析其内部的各种属性。里面的SQL语句解析为sqlSource对象。
 
 ![sqlSource](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-08-mybatis_source_code_reading_2/sqlSource.png)
@@ -518,7 +532,6 @@ MappedStatement对象如下：
 
 这里一个SQL方法就解析为了一个MappedStatement对象。注意MappedStatement是namespace+ID唯一的,MapperInterface的方法名字不能重复的。
 
-
 再回到XMLMapperBuilder#parse()方法，进入bindMapperForNamespace()方法。
 ```java
 private void bindMapperForNamespace() {
@@ -540,7 +553,9 @@ private void bindMapperForNamespace() {
     }
   }
 ```
+
 这里注册了Mapper接口到mapperRegistry。
+
 ```java
 public <T> void addMapper(Class<T> type) {
     if (type.isInterface()) {
@@ -564,7 +579,9 @@ public <T> void addMapper(Class<T> type) {
     }
   }
 ```
+
 最后是存入knownMappers这个集合。
+
 ```java
 public <T> void addMapper(Class<T> type) {
     if (type.isInterface()) {
@@ -588,6 +605,7 @@ public <T> void addMapper(Class<T> type) {
     }
   }
 ```
+
 这里knownMappers存入的对象是MapperProxyFactory，用以创建MapperProxy对象的工厂。
 
 ```java
@@ -660,6 +678,7 @@ public void parse() {
     parsePendingMethods();
   }
 ```
+
 这里parseStatement解析SQL方法，如：
 
 ```java
@@ -667,7 +686,9 @@ public void parse() {
     @ResultMap("BaseResultMap")
     List<User> findAll();
 ```
+
 这里依旧是从接口方法+注解解析成MappedStatement：
+
 ```java
 void parseStatement(Method method) {
     final Class<?> parameterTypeClass = getParameterType(method);
@@ -762,6 +783,7 @@ XMLMapper不是必须的，不过一些复杂的动态SQL使用XML会比较简�
 ![Ambiguity](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-08-mybatis_source_code_reading_2/Ambiguity.png)
 
 其原因是这里存入了Ambiguity对象。
+
 ```java
    public V put(String key, V value) {
         if (containsKey(key)) {
@@ -779,11 +801,12 @@ XMLMapper不是必须的，不过一些复杂的动态SQL使用XML会比较简�
         return super.put(key, value);
         }
 ```
+
 这里还判断了mapperStatement的ID必须唯一，mapperStatement的ID为Namespace+SQL的ID(MapperInterface的接口名称)。
 
 ## 四、SqlSessionTemplate解读
 
-SqlSessionTemplate实现了SqlSession接口，是一个特殊的SqlSession对象。
+SqlSessionTemplate实现了SqlSession接口，是一个特殊的SqlSession对象。<br>
 在官网的这个示例中，提到"SqlSession 的实例不是线程安全的，因此是不能被共享的，所以它的最佳的作用域是请求或方法作用域"，也就是SqlSession是请求/方法内创建使用完成然后销毁的。
 
 ```java
@@ -854,8 +877,8 @@ private class SqlSessionInterceptor implements InvocationHandler {
   }
 ```
 
-这里可以看到每次执行SQL方法，都创建一个新的SqlSession对象，这样和官网描述相符合的。
-SqlSession也不是总会新建一个的。
+这里可以看到每次执行SQL方法，都创建一个新的SqlSession对象，这样和官网描述相符合的。<br>
+但是SqlSession也不是总会新建一个的。
 
 ```java
 public static SqlSession getSqlSession(SqlSessionFactory sessionFactory, ExecutorType executorType,
@@ -880,9 +903,9 @@ public static SqlSession getSqlSession(SqlSessionFactory sessionFactory, Executo
   }
 ```
 
-TransactionSynchronizationManager这个类，笔者有在[<<TransactionManager事务管理器>>](https://zouhuanli.github.io/spring_source_code_reading_19/)这篇文章有做简单解读。
-TransactionSynchronization:事务同步信息，允许自定义资源托管到TransactionSynchronizationManager。如Mybatis的SqlSessionSynchronization。
-这里主要的作用是将事务相关信息绑定到resources这个线程本地变量中，和注册TransactionSynchronization到synchronizations。
+TransactionSynchronizationManager这个类，笔者有在[<<TransactionManager事务管理器>>](https://zouhuanli.github.io/spring_source_code_reading_19/)这篇文章有做简单解读。<br>
+TransactionSynchronization:事务同步信息，允许自定义资源托管到TransactionSynchronizationManager。如Mybatis的SqlSessionSynchronization。<br>
+这里主要的作用是将事务相关信息绑定到resources这个线程本地变量中，和注册TransactionSynchronization到synchronizations。<br>
 因此在Spring事务启动后，注册同步资源信息(SqlSession)到TransactionSynchronizationManager，其源码如下：
 
 ```java
@@ -937,7 +960,7 @@ TransactionSynchronization:事务同步信息，允许自定义资源托管到Tr
   }
 ```
 
-也就是说这里主要的作用就是为了支持Spring事务功能，开始事务后支持多个SQL执行方法可以共享一个SqlSession对象。
+可以看到，这里使用TransactionSynchronizationManager主要的作用就是mybatis为了支持Spring事务功能，开始事务后支持多个SQL执行方法可以共享一个SqlSession对象。
 
 ## 五、参考材料
 
