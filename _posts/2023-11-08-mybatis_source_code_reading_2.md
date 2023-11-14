@@ -16,7 +16,7 @@ author: zouhuanli
 Configuration类是是mybatis的核心配置类，保存了mybatis所有配置信息。既包括mybatis-config.xml和配置文件的配置如cacheEnabled，也包括解析之后生成的配置如mapperRegistry、interceptorChain。<br>
 "每个基于MyBatis的应用都是以一个SqlSessionFactory的实例为核心的。SqlSessionFactory的实例可以通过SqlSessionFactoryBuilder获得。而SqlSessionFactoryBuilder则可以从XML配置文件或一个预先配置的Configuration实例来构建出SqlSessionFactory实例"。<br>
 SqlSessionFactory可以由SqlSessionFactoryBuilder或者SqlSessionFactoryBean创建。<br>
-SqlSessionFactoryBean#getObject方法。<br>
+SqlSessionFactoryBean#getObject方法如下。<br>
 
 ```java
   @Override
