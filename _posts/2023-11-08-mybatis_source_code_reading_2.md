@@ -937,7 +937,7 @@ TransactionSynchronization:事务同步信息，允许自定义资源托管到Tr
         holder = new SqlSessionHolder(session, executorType, exceptionTranslator);
                             //绑定session到TransactionSynchronizationManager内的resources，绑定key为sessionFactory对象。
         TransactionSynchronizationManager.bindResource(sessionFactory, holder);
-                            //SqlSessionSynchronization，SqlSessionSynchronization实现了TransactionSynchronization，允许在Spring事务处理阶段注册回回调方法
+                            //SqlSessionSynchronization，SqlSessionSynchronization实现了TransactionSynchronization，允许拓展类对象在Spring事务处理阶段注册回调方法
                             //回调方法有suspend()、resume()、flush()、beforeCommit()、beforeCompletion()、afterCommit()、afterCompletion()                         
         TransactionSynchronizationManager
             .registerSynchronization(new SqlSessionSynchronization(holder, sessionFactory));
