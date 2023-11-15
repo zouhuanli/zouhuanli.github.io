@@ -304,7 +304,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
   
 }
 ```
-创建MapperFactoryBean时候通过afterPropertiesSet方法调用checkDaoConfig方法，向在knownMappers加入创建接口的MapperProxy的工厂MapperProxyFactory。
+创建MapperFactoryBean时候通过afterPropertiesSet方法调用checkDaoConfig方法，向在knownMappers加入创建接口的MapperProxy的工厂MapperProxyFactory。<br>
 " return getSqlSession().getMapper(this.mapperInterface);"这里getSqlSession()返回的是注册的sqlSessionTemplate。
 
 然后开始创建MapperProxy对象。
