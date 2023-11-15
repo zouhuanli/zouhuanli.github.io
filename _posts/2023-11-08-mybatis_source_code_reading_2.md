@@ -414,7 +414,7 @@ private void buildStatementFromContext(List<XNode> list, String requiredDatabase
         }
 ```
 
-最后来到了statementParser.parseStatementNode()这个方法，解析一个select|insert|update|delete元素。
+最后来到了statementParser.parseStatementNode()这个方法，解析一个select\|insert\|update\|delete元素。
 
 ```java
 public void parseStatementNode() {
@@ -485,7 +485,7 @@ public void parseStatementNode() {
   }
 ```
 
-这里具体解析一个select|insert|update|delete方法，解析其内部的各种属性。里面的SQL语句解析为sqlSource对象。
+这里具体解析一个select\|insert\|update\|delete方法，解析其内部的各种属性。里面的SQL语句解析为sqlSource对象。
 
 ![sqlSource](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-08-mybatis_source_code_reading_2/sqlSource.png)
 
