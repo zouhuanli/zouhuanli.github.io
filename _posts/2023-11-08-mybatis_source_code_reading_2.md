@@ -337,7 +337,7 @@ private void parseConfiguration(XNode root) {
 
 ### 3.3 XMLMapper解析
 
-我们解析进入这行代码：
+我们继续进入这行代码：
 
 ```java
 XMLMapperBuilder xmlMapperBuilder = new XMLMapperBuilder(mapperLocation.getInputStream(),
