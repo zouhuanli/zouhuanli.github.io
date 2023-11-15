@@ -13,10 +13,10 @@ author: zouhuanli
 
 前面我们已经知道mybatis对MapperInterface最终会创建MapperProxy对象，用以代理接口的全部SQL方法。其创建流程如下图：
 
-![MapperFactoryBean_getObject](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-08-mybatis_source_code_reading_1/MapperFactoryBean_getObject.png)
+![MapperFactoryBean_getObject](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-15-mybatis_source_code_reading_3/MapperFactoryBean_getObject.png)
 
 其创建流程的入口时MapperFactoryBean#getObject()方法，通过MapperScanner会向Spring容器注册MapperFactoryBean。MapperFactoryBean是一类FactoryBean，FactoryBean是创建Bean的工厂， 主要用以定制创建复杂对象的方法，因为Spring默认的创建对象方法的通过构造器。
-FactoryBean在Spring容器注册的是FactoryBean#getObject()方法返回的对象。获取FactoryBean本身而不是getObject()方法返回的对象，需要使用&+beanName或者指定类型来获取。
+FactoryBean在Spring容器注册的是FactoryBean#getObject()方法返回的对象,获取FactoryBean本身而不是getObject()方法返回的对象，需要使用&+beanName或者指定类型来获取。
 
 本文从与Spring源码结合的角度，解读MapperFactoryBean、MapperProxy的创建过程。
 
@@ -230,7 +230,7 @@ private void processBeanDefinitions(Set<BeanDefinitionHolder> beanDefinitions) {
 返回的对象。
 最终的BeanDefinition如下。
 
-![ClassPathMapperScanner](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-08-mybatis_source_code_reading_1/ClassPathMapperScanner.png)
+![ClassPathMapperScanner](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-15-mybatis_source_code_reading_3/ClassPathMapperScanner.png)
 
 其注册到Spring容器的Bean的Name是userMapper、actorMapper,是Mapper接口的首字母小写。
 而MapperFactoryBean本身的nam是&userMapper、&actorMapper。
