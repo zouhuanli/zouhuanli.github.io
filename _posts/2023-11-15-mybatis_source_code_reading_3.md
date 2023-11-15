@@ -313,6 +313,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
 ## 三、创建MapperProxy
 
 从getMapper方法是真正创建MapperProxy对象的流程，Spring的单例bean是只会创建一次，所以Mapper接口对应的MapperProxy对象也只会创建一个，然后加入到singletonObjects中。
+
 Mapper接口本身只有方法和SQL语句，并没有保存状态，因此创建为单例，作为整个应用周期唯一，是比较合理和节省资源的做法。
 
 继续来到SqlSessionTemplate#getMapper方法。
