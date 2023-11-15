@@ -233,7 +233,7 @@ private void processBeanDefinitions(Set<BeanDefinitionHolder> beanDefinitions) {
 ![ClassPathMapperScanner](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-15-mybatis_source_code_reading_3/ClassPathMapperScanner.png)
 
 其注册到Spring容器的Bean的Name是userMapper、actorMapper,是Mapper接口的首字母小写。
-而MapperFactoryBean本身的nam是&userMapper、&actorMapper。
+而MapperFactoryBean本身的name是&userMapper、&actorMapper。
 
 ## 二、创建MapperFactoryBean
 
