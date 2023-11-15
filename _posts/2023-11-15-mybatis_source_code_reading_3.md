@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文是mybatis源码阅读计划的第三篇文章,本文简单介绍一下Mybatis的初始化过程，也就是解读一下Configuration和SqlSessionFactory的启动过程。<br>
+本文是mybatis源码阅读计划的第三篇文章,本文简单解读MapperProxy创建过程。<br>
 
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。<br>
 
