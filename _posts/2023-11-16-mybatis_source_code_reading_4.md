@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文是mybatis源码阅读计划的第三篇文章,本文从MapperProxy的invoke方法作为入口，解读Mapper接口的SQL方法执行流程。<br>
+本文是mybatis源码阅读计划的第四篇文章,本文从MapperProxy的invoke方法作为入口，解读Mapper接口的SQL方法执行流程。<br>
 
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。<br>
 
