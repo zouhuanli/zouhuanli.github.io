@@ -120,14 +120,17 @@ public class MapperMethod {
 
 我们继续进入这行代码"result = sqlSession.selectOne(command.getName(), param);",这里的sqlSession是sqlSessionTemplate这个对象。
 来到sqlSessionTemplate#selectOne这个方法。
+
 ```java
 @Override
   public <T> T selectOne(String statement, Object parameter) {
     return this.sqlSessionProxy.selectOne(statement, parameter);
   }
 ```
+
 这里把所有SQL方法都转发给sqlSessionProxy这个代理对象了。
 sqlSessionProxy这个代理对象在这里创建。
+
 ```java
 public SqlSessionTemplate(SqlSessionFactory sqlSessionFactory, ExecutorType executorType,
       PersistenceExceptionTranslator exceptionTranslator) {
@@ -142,6 +145,7 @@ public SqlSessionTemplate(SqlSessionFactory sqlSessionFactory, ExecutorType exec
         new Class[] { SqlSession.class }, new SqlSessionInterceptor());
   }
 ```
+
 所以我们来到了SqlSessionInterceptor这个对象。
 
 ## 二、SqlSessionInterceptor
@@ -184,6 +188,7 @@ private class SqlSessionInterceptor implements InvocationHandler {
     }
   }
 ```
+
 这行代码” Object result = method.invoke(sqlSession, args);“将对应参数转发到普通的DefaultSqlSession去处理。
 
 ## 三、DefaultSqlSession
@@ -244,6 +249,7 @@ private <E> List<E> selectList(String statement, Object parameter, RowBounds row
     }
   }
 ```
+
 到这里真正执行SQL方法的是Executor。
 
 ## 四、Executor
@@ -306,6 +312,7 @@ selectList方法如下,MappedStatement就是之前注册到mappedStatements集�
 ```
 
 然后是BaseExecutor#query方法：
+
 ```java
 @Override
   public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler,
