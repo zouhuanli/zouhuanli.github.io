@@ -824,7 +824,7 @@ public class TransactionalCache implements Cache {
 
 二级缓存需要显示开启cache-enabled和指定cache实现类。<br>
 二级缓存基于Namespace，也就是作用域是Mapper级别。<br>
-Mybatis的二级缓存应该慎重选用，在单机或者分布式缓存都会引发一致性的问题，需要慎重考虑，笔者的建议是不要使用Mybatis的二级缓存。
+Mybatis的二级缓存应该慎重选用，在单机或者分布式缓存都可能会引发一致性的问题，需要慎重考虑，笔者的建议是不要使用Mybatis的二级缓存。
 
 
 总结的说，mybatis查询数据的顺序是：1.二级缓存；2.一级缓存；3.数据库。<br>
