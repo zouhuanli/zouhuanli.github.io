@@ -828,7 +828,7 @@ Mybatis的二级缓存应该慎重选用，在单机或者分布式缓存都可�
 
 
 总结的说，mybatis查询数据的顺序是：1.二级缓存；2.一级缓存；3.数据库。<br>
-这里使用这个图总结一下Mybatis的一级和二级缓存，图片来源[美团技术团队](https://tech.meituan.com/2018/01/19/mybatis-cache.html)。
+最后使用这个图总结一下Mybatis的一级和二级缓存，图片来源[美团技术团队](https://tech.meituan.com/2018/01/19/mybatis-cache.html)。
 
 ![mybatis-cache](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-18-mybatis_source_code_reading_5/mybatis-cache.png)
 
