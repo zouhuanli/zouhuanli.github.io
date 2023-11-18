@@ -8,7 +8,7 @@ author: zouhuanli
 ---
 
 本文是mybatis源码阅读计划的第四篇文章,本文简单解读mybatis的一级缓存、二级缓存的实现源码。<br>
-Cache的思想在计算机世界随处可见，利用时间和空间的局限性，极大的提高了查询速度，也带领了一致性的问题。
+Cache的思想在计算机世界随处可见，利用时间和空间的局限性，极大的提高了查询速度，也带来了一致性的问题。
 
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。<br>
 
@@ -45,7 +45,7 @@ public enum LocalCacheScope {
 
 ### 1.1 简单使用
 
-一级缓存是默认开启的，没有相关配置的参数。因为默认一个SQL方法就会创建一个SqlSession，因此调试一级缓存可以使用@@Transactional开启事务处理。
+一级缓存是默认开启的，没有相关配置的参数。因为默认一个SQL方法就会创建一个SqlSession，因此调试一级缓存可以使用@Transactional开启事务处理来测试。
 
 先关闭二级缓存，配置如下：
 
@@ -219,7 +219,7 @@ public List<User> listAll() {
 ```
 
 这里调用了三次findAll方法，日志输出只查询了一次数据库。<br>
-去掉事务注解，结果如下：
+去掉事务注解，查询了三次数据库，结果如下：
 
 ![mybatis_cache_1](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-18-mybatis_source_code_reading_5/mybatis_cache_1.png)
 
@@ -491,7 +491,7 @@ Cache cache = ms.getCache();
 
 1. 安装redis
 
-因为redis默认不支持windows环境，要按照windows版本可以参考[https://github.com/redis-windows/redis-windows/](https://github.com/redis-windows/redis-windows/)这个项目。
+因为redis默认不支持windows环境，要安装windows版本可以参考[https://github.com/redis-windows/redis-windows/](https://github.com/redis-windows/redis-windows/)这个项目。
 
 笔者这里就使用docker简单安装最新版本的redis，如下。
 
@@ -503,7 +503,7 @@ docker run --name redis -it -p 6379:6379 -v /data/redis-data  redis --requirepas
 docker exec -it redis redis-cli -a "123456"
 ```
 
-使用redis-cli登录简单测试一下 (<strong>PS:keys * 慎用，读者使用后果自负</strong>)：
+使用redis-cli登录简单测试一下 (<strong>PS:keys * 请慎用，读者使用后果自负</strong>)：
 
 ```shell
 127.0.0.1:6379> keys *
@@ -518,7 +518,7 @@ OK
 
 2. 引入redis模块和配置redis
 
-这里读者使用的是spring-boot-starter-data-redis模块：
+这里笔者使用的是spring-boot-starter-data-redis模块：
 ```xml
    <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -746,7 +746,7 @@ public class MybatisCacheConfig {
                         //获取二级缓存
         List<E> list = (List<E>) tcm.getObject(cache, key);
         if (list == null) {
-                        //delega.query方法就是上文的BaseExecutor#query
+                        //delega.query方法就是上面的BaseExecutor#query
           list = delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
                         //存入二级缓存
           tcm.putObject(cache, key, list); // issue #578 and #116
@@ -757,7 +757,7 @@ public class MybatisCacheConfig {
     return delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
   }
 ```
-可以看到这里二级缓存是在一级缓存外层(之前)生效的，也就是mybatis查询数据的顺序是：1.二级缓存；2.一级缓存；3.数据库。<br>
+可以看到这里二级缓存是在一级缓存外层(之前)生效的，也就是<strong>mybatis查询数据的顺序是：1.二级缓存；2.一级缓存；3.数据库</strong>。<br>
 二级缓存委派给TransactionalCacheManager去处理：
 ```java
 public class TransactionalCacheManager {
