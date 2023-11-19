@@ -28,7 +28,7 @@ MyBatis 允许你在映射语句执行过程中的某一点进行拦截调用。
 3. ResultSetHandler (handleResultSets, handleOutputParameters)
 4. StatementHandler (prepare, parameterize, batch, update, query)
 
-下面从一个简单的示例按探究mybatis的实现机制。
+下面从一个简单的示例简单探究mybatis的实现机制。
 
 ## 一、简单使用
 
@@ -51,7 +51,7 @@ public interface Interceptor {
 
 ```
 
-我们手动实现一个间的的拦截器即可。
+我们手动实现一个简单的拦截器即可。
 
 ```java
 /**
@@ -81,7 +81,7 @@ public class ExamplePlugin implements Interceptor {
     }
 }
 ```
-这个拦截器拦截了Executor#query方法的执行，方法参数时args这个数组。
+这个拦截器拦截了Executor#query方法的执行，方法参数是args这个数组。
 
 拦截器添加到Mybatis的Configuration中:
 
@@ -118,13 +118,13 @@ public class MyBatisConfig {
 2023-11-19 20:02:29,948|INFO |         MyListener.java:33  |SpringApplicationShutdownHook|MyListener.contextDestroyed()
 ```
 
-下面解读一下拦截器的实现源码。
+下面笔者解读一下拦截器的实现源码。
 
 ## 二、源码解读
 
 ### 2.1 注册拦截器到拦截器链
 
-在创建SqlSessionFactory和Configuration时候，会解析XML或者注解注册的拦截器列表
+在创建SqlSessionFactory和Configuration时候，会解析XML或者注解注册的拦截器列表。
 ```java
 
     if (!isEmpty(this.plugins)) {
