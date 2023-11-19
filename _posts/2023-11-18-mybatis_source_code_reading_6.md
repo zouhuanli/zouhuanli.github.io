@@ -227,7 +227,7 @@ public static Object wrap(Object target, Interceptor interceptor) {
 
 ## 三、PageHelper简单解读
 
-PageHelper一款用以分页的mybatis插件，以starter的方法引入：
+PageHelper是一款用以分页的mybatis插件，以starter的方法引入：
 
 ```xml
   <dependency>
