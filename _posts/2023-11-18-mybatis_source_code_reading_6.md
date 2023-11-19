@@ -387,6 +387,6 @@ public void afterPropertiesSet() throws Exception {
 
 ## 四、参考材料
 
-1.https://mybatis.org/mybatis-3/zh/ <br>
-2.Mybatis源码(版本3.5.13) <br>
+1. https://mybatis.org/mybatis-3/zh/ <br>
+2. Mybatis源码(版本3.5.13) <br>
 
