@@ -173,7 +173,7 @@ public class InterceptorChain {
 
 观察pluginAll的引用代码，分别Executor、ParameterHandler、ResultSetHandler、StatementHandler，是共有四个：
 
-![pluginAll](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-18-mybatis_source_code_reading_6/pluginAll.png)
+![pluginAll](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-19-mybatis_source_code_reading_6/pluginAll.png)
 
 这里按示例的Executor为例,来到Configuration#newExecutor方法。
 
@@ -380,7 +380,7 @@ public void afterPropertiesSet() throws Exception {
 
 添加分页参数后的pageBoundSql如下：
 
-![pageBoundSql](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-18-mybatis_source_code_reading_6/pageBoundSql.png)
+![pageBoundSql](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-19-mybatis_source_code_reading_6/pageBoundSql.png)
 
 
 总结的说，就是mybatis的插件基于拦截器创建代理对象来实现，可以拦截Executor、ParameterHandler、ResultSetHandler、StatementHandler的方法，来实现开发者定制化的功能。
