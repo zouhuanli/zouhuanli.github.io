@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文是mybatis源码阅读计划的第四篇文章,本文简单解读mybatis的一级缓存、二级缓存的实现源码。<br>
+本文是mybatis源码阅读计划的第五篇文章,本文简单解读mybatis的一级缓存、二级缓存的实现源码。<br>
 Cache的思想在计算机世界随处可见，利用时间和空间的局限性，极大的提高了查询速度，也带来了一致性的问题。
 
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。<br>
