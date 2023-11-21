@@ -12,13 +12,13 @@ author: zouhuanli
 本文源码地址为:[https://github.com/zouhuanli/MySpringBoot.git](https://github.com/zouhuanli/MySpringBoot.git)。<br>
 
 严格的讲，数据源、连接池和事务这些不是Mybatis关注的主要的源码。Mybatis是作为一个ORM层来使用的，数据源和连接池都有对应的开源组件，如Druid、Hikari等。<br>
-而事务管理器有两种”JDBC|MANAGED“,官网对此的解释是：<br>
+而MyBatis的事务管理器有两种”JDBC|MANAGED“,官网对此的解释是：<br>
 JDBC – 这个配置直接使用了 JDBC 的提交和回滚功能，它依赖从数据源获得的连接来管理事务作用域。<br>
 MANAGED – 这个配置几乎没做什么。它从不提交或回滚一个连接，而是让容器来管理事务的整个生命周期。<br>
 
 在和Spring结合使用时候没有必要配置事务管理器，将事务管理托管给Spring即可。要注意一个数据源要配置一个SqlSessionFactory和TransactionManager,默认的事务管理是不能跨数据源使用的。
 
-下面按照SpringBoot的默认的HikariDataSource，和Spring的TransactionManager来解读一下Mybatis事务相关的源码
+下面按照SpringBoot的默认的HikariDataSource，和Spring的TransactionManager来解读一下Mybatis事务相关的源码。
 
 ## 一、数据源和连接池
 
@@ -204,7 +204,7 @@ HikariDataSource继承自DataSource，HikariConfig主要提供相关配置。
 
 可以看到最终返回的是ProxyConnection这个代理对象。
 
-而其close方法如下：
+其close方法如下：
 ```java
   @Override
    public final void close() throws SQLException
@@ -242,7 +242,7 @@ HikariDataSource继承自DataSource，HikariConfig主要提供相关配置。
    }
 ```
 
-而MybatisAutoConfiguration在创建SqlSessionFactory的DataSource，并不是必须要是HikariDataSource。创建的具体DataSource类型在DataSourceAutoConfiguration指定即可。
+MybatisAutoConfiguration在创建SqlSessionFactory的DataSource，并不是必须要是HikariDataSource。创建的具体DataSource类型在DataSourceAutoConfiguration指定即可。
 
 
 ## 二、事务
@@ -344,7 +344,7 @@ public class SpringManagedTransaction implements Transaction {
 
 ### 2.1 获得连接
 
-来到SqlSessionTemplate$SqlSessionInterceptor这个类,其getSqlSession如下：
+首先来到SqlSessionTemplate$SqlSessionInterceptor这个类,其getSqlSession如下：
 
 ```java
 public static SqlSession getSqlSession(SqlSessionFactory sessionFactory, ExecutorType executorType,
@@ -480,7 +480,7 @@ public final TransactionStatus getTransaction(@Nullable TransactionDefinition de
 	}
 
 ```
-这里参考阅读一下笔者的这篇文章[Spring源码阅读十九:TransactionManager事务管理器](https://zouhuanli.github.io/spring_source_code_reading_19/)。
+这里读者可以参考阅读一下笔者的这篇文章[Spring源码阅读十九:TransactionManager事务管理器](https://zouhuanli.github.io/spring_source_code_reading_19/)。
 
 ### 2.3 提交事务
 
@@ -614,7 +614,7 @@ Executor和SpringManagedTransaction的关闭方法如下：
 
 ### 2.6 简单总结
 
-从上面源码可以看出，Mybatis和spring结合使用时候，mybatis的事务功能全部托管给Spring去管理，自己基本啥都没做，主要是做一些资源绑定和资源清理。
+从上面源码可以看出，Mybatis和spring结合使用时候，mybatis的事务功能全部托管给Spring去管理，自己基本啥都没做，主要是做了一些资源绑定和资源清理操作。
 
 ## 三、参考材料
 
