@@ -137,7 +137,7 @@ Tomcat整体的架构，笔者在网上找到这个图总结的比较好的：
 
 我们之前分析DispatchServlet知道DispatchServlet实现了Servlet接口，并将service方法转发到dispatch方法。但DispatchServlet的创建、初始化、销毁都是Servlet容器(如Tomcat)来操作的。
 
-Servlet#service方法也是有Tomcat调用的,上面启动流程中Wrapper将Servlet修饰为StandardWrapper。
+Servlet#service方法也是由Tomcat调用的,上面启动流程中Wrapper将Servlet修饰为StandardWrapper。
 
 ```java
 
@@ -149,7 +149,7 @@ Servlet#service方法也是有Tomcat调用的,上面启动流程中Wrapper将Ser
 
 StandardWrapper是Servlet的修饰器，我们可以从Servlet的service方法解读引用流程。
 
-Http请求的基本流程如下，后续笔者会跟踪源码流程给出更详细的流程解读。
+Http请求的基本流程如下，后续笔者会跟踪源码流程给出Http请求处理的流程解读。
 
 ![process-0](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-11-23-tomcat_source_code_reading_1/process-0.png)
 
