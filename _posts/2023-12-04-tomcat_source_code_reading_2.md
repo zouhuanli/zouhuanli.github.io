@@ -36,11 +36,9 @@ author: zouhuanli
 
 我们从Bootstrap这个类开始解读Tomcat启动流程中的初始化流程。
 
-# 一、Catalina和Server
+# 一、Catalina
 
-## 1.1 Catalina
-
-虽然看进程信息启动类是Bootstrap，当实际执行的启动类是Catalina。
+虽然看进程信息启动类是Bootstrap，但实际执行的启动类是Catalina。
 
 Bootstrap源码如下（有删减）：
 
@@ -765,7 +763,7 @@ protected Digester createStartDigester() {
 
 下面我们继续来到Server的源码。
 
-## 1.2 Server
+# 二、Server
 
 上面源码已经确定了Server的具体类型是StandardServer。看下Server的类继承关系图：
 
@@ -868,14 +866,16 @@ XXXInternal方法这里会议很多类似的，如stopInternal、startInternal�
 
 TODO~
 
-# 二、Service
+# 三、Service
 
 
-# 三、Container容器
+# 四、Container容器(Engine、Host、Context)
 
-# 四、Servlet
 
-# 五、参考材料
+# 五、Wrapper和Servlet
+
+
+# 六、参考材料
 
 1. 《深入剖析Tomcat》 <br>
 2. 《HTTP权威指南》
