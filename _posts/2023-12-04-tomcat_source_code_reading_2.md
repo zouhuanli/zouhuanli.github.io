@@ -864,17 +864,788 @@ XXXInternal方法这里会议很多类似的，如stopInternal、startInternal�
 
 接下来，我们进入Service方法解读其init初始化方法。
 
-TODO~
+
 
 # 三、Service
 
+StandardService的类关系图如下：
+
+![StandardService](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/StandardService.png)
+
+我们直接来到initInternal方法，如下：
+
+```java
+  /**
+     * Invoke a pre-startup initialization. This is used to allow connectors to bind to restricted ports under Unix
+     * operating environments.
+     */
+    @Override
+    protected void initInternal() throws LifecycleException {
+
+        super.initInternal();
+
+        if (engine != null) {
+                         //初始化Engine
+            engine.init();
+        }
+
+        // Initialize any Executors
+        for (Executor executor : findExecutors()) {
+            if (executor instanceof JmxEnabled) {
+                ((JmxEnabled) executor).setDomain(getDomain());
+            }
+                         //初始化线程池
+            executor.init();
+        }
+
+        // Initialize mapper listener
+                        //初始化监听器
+        mapperListener.init();
+
+        // Initialize our defined Connectors
+        synchronized (connectorsLock) {
+            for (Connector connector : connectors) {
+                                //初始化连接器
+                connector.init();
+            }
+        }
+    }
+
+```
+
+从源码可以看到Service的初始化方法主要是初始化Engine、Executor、Connector等组件。
+Executor线程池拓展了原生的Java的Executor线程池接口，其类关系图如下：
+
+![StandardThreadExecutor](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/StandardThreadExecutor.png)
+
+在Tomcat10居然就已有虚拟线程的实现了，官方的VirtualThread是JDK21（2023年9月）才发布。
+
+连接器Connector源码如下：
+```java
+
+public class Connector extends LifecycleMBeanBase {
+
+
+    public Connector(String protocol) {
+        configuredProtocol = protocol;
+        ProtocolHandler p = null;
+        try {
+            p = ProtocolHandler.create(protocol);
+        } catch (Exception e) {
+            log.error(sm.getString("coyoteConnector.protocolHandlerInstantiationFailed"), e);
+        }
+        if (p != null) {
+            protocolHandler = p;
+            protocolHandlerClassName = protocolHandler.getClass().getName();
+        } else {
+            protocolHandler = null;
+            protocolHandlerClassName = protocol;
+        }
+        // Default for Connector depends on this system property
+        setThrowOnFailure(Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE"));
+    }
+
+
+    public Connector(ProtocolHandler protocolHandler) {
+        protocolHandlerClassName = protocolHandler.getClass().getName();
+        configuredProtocol = protocolHandlerClassName;
+        this.protocolHandler = protocolHandler;
+        // Default for Connector depends on this system property
+        setThrowOnFailure(Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE"));
+    }
+
+
+
+
+    /**
+     * Pause the connector.
+     */
+    public void pause() {
+        try {
+            if (protocolHandler != null) {
+                protocolHandler.pause();
+            }
+        } 
+    }
+
+
+    /**
+     * Resume the connector.
+     */
+    public void resume() {
+
+            if (protocolHandler != null) {
+                protocolHandler.resume();
+            }
+       
+    }
+
+
+    @Override
+    protected void initInternal() throws LifecycleException {
+
+        super.initInternal();
+
+        // Initialize adapter
+        adapter = new CoyoteAdapter(this);
+        protocolHandler.setAdapter(adapter);
+     
+            protocolHandler.init();
+       
+    }
+
+
+    /**
+     * Begin processing requests via this Connector.
+     *
+     * @exception LifecycleException if a fatal startup error occurs
+     */
+    @Override
+    protected void startInternal() throws LifecycleException {
+
+        setState(LifecycleState.STARTING);
+
+        // Configure the utility executor before starting the protocol handler
+        if (protocolHandler != null && service != null) {
+            protocolHandler.setUtilityExecutor(service.getServer().getUtilityExecutor());
+        }
+
+        
+            protocolHandler.start();
+        
+    }
+
+    @Override
+    protected void stopInternal() throws LifecycleException {
+
+        setState(LifecycleState.STOPPING);
+
+        try {
+            if (protocolHandler != null) {
+                protocolHandler.stop();
+            }
+        } 
+    }
+
+
+    @Override
+    protected void destroyInternal() throws LifecycleException {
+            if (protocolHandler != null) {
+                protocolHandler.destroy();
+
+        super.destroyInternal();
+    }
+            
+}
+
+```
+Connector的init方法主要是创建CoyoteAdapter适配器和执行protocolHandler协议处理器的初始化。connectors如下，其内部的协议处理器是Http11NioProtocol：
+
+![connectors](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/connectors.png)
+
+下面来到容器组件的初始化流程。
 
 # 四、Container容器(Engine、Host、Context)
 
+默认的四类容器组件有Engine、Host、Context、Wrapper四类。类继承关系图如下：
+
+![Container](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/Container.png)
+
+默认的容器组件实现类是StandardXXX,下面先解读一下StandardEngine的源码。
+
+## 4.1 Engine
+
+StandardEngine的源码如下：
+
+````java
+/**
+ * Standard implementation of the <b>Engine</b> interface. Each child container must be a Host implementation to process
+ * the specific fully qualified host name of that virtual host.
+ *
+ * @author Craig R. McClanahan
+ */
+public class StandardEngine extends ContainerBase implements Engine {
+
+
+
+    /**
+     * Return the default host.
+     */
+    @Override
+    public String getDefaultHost() {
+        return defaultHost;
+    }
+
+
+    /**
+     * Set the default host.
+     *
+     * @param host The new default host
+     */
+                        //设置Host
+    @Override
+    public void setDefaultHost(String host) {
+
+        String oldDefaultHost = this.defaultHost;
+        if (host == null) {
+            this.defaultHost = null;
+        } else {
+            this.defaultHost = host.toLowerCase(Locale.ENGLISH);
+        }
+        if (getState().isAvailable()) {
+            service.getMapper().setDefaultHostName(host);
+        }
+        support.firePropertyChange("defaultHost", oldDefaultHost, this.defaultHost);
+
+    }
+
+
+    /**
+     * Add a child Container, only if the proposed child is an implementation of Host.
+     *
+     * @param child Child container to be added
+     */
+                     //添加子容器Host
+    @Override
+    public void addChild(Container child) {
+
+        if (!(child instanceof Host)) {
+            throw new IllegalArgumentException(sm.getString("standardEngine.notHost"));
+        }
+        super.addChild(child);
+
+    }
+
+
+
+                    //初始化
+    @Override
+    protected void initInternal() throws LifecycleException {
+        // Ensure that a Realm is present before any attempt is made to start
+        // one. This will create the default NullRealm if necessary.
+        getRealm();
+        super.initInternal();
+    }
+
+
+    /**
+     * Start this component and implement the requirements of
+     * {@link org.apache.catalina.util.LifecycleBase#startInternal()}.
+     *
+     * @exception LifecycleException if this component detects a fatal error that prevents this component from being
+     *                                   used
+     */
+    @Override
+                 //启动方法
+    protected synchronized void startInternal() throws LifecycleException {
+
+        // Log our server identification information
+        if (log.isInfoEnabled()) {
+            log.info(sm.getString("standardEngine.start", ServerInfo.getServerInfo()));
+        }
+        // Standard container startup
+        super.startInternal();
+    }
+
+}
+
+````
+
+## 4.2 Host
+
+继续来到Host的源码：
+```java
+
+/**
+ * Standard implementation of the <b>Host</b> interface. Each child container must be a Context implementation to
+ * process the requests directed to a particular web application.
+ *
+ * @author Craig R. McClanahan
+ * @author Remy Maucherat
+ */
+public class StandardHost extends ContainerBase implements Host {
+
+    private static final Log log = LogFactory.getLog(StandardHost.class);
+
+  
+    /**
+     * The application root for this Host.
+     */
+    private String appBase = "webapps";
+    private volatile File appBaseFile = null;
+
+
+    /**
+     * Add a child Container, only if the proposed child is an implementation of Context.
+     *
+     * @param child Child container to be added
+     */
+                    //添加子容器
+    @Override
+    public void addChild(Container child) {
+
+        if (!(child instanceof Context)) {
+            throw new IllegalArgumentException(sm.getString("standardHost.notContext"));
+        }
+
+        child.addLifecycleListener(new MemoryLeakTrackingListener());
+
+        // Avoid NPE for case where Context is defined in server.xml with only a
+        // docBase
+        Context context = (Context) child;
+        if (context.getPath() == null) {
+            ContextName cn = new ContextName(context.getDocBase(), true);
+            context.setPath(cn.getPath());
+        }
+
+        super.addChild(child);
+
+    }
+
+
+
+    /**
+     * Start this component and implement the requirements of
+     * {@link org.apache.catalina.util.LifecycleBase#startInternal()}.
+     *
+     * @exception LifecycleException if this component detects a fatal error that prevents this component from being
+     *                                   used
+     */
+                            //启动方法
+    @Override
+    protected synchronized void startInternal() throws LifecycleException {
+
+        // Set error report valve
+        String errorValve = getErrorReportValveClass();
+        if ((errorValve != null) && (!errorValve.equals(""))) {
+            try {
+                boolean found = false;
+                Valve[] valves = getPipeline().getValves();
+                for (Valve valve : valves) {
+                    if (errorValve.equals(valve.getClass().getName())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    Valve valve = ErrorReportValve.class.getName().equals(errorValve) ? new ErrorReportValve() :
+                            (Valve) Class.forName(errorValve).getConstructor().newInstance();
+                    getPipeline().addValve(valve);
+                }
+            } catch (Throwable t) {
+                ExceptionUtils.handleThrowable(t);
+                log.error(sm.getString("standardHost.invalidErrorReportValveClass", errorValve), t);
+            }
+        }
+        super.startInternal();
+    }
+
+}
+
+```
+
+## 4.3 Context
+
+默认的Context的实现类是StandardContext，Boot的TomcatEmbeddedContext拓展了StandardContext。StandardContext的部分源码如下：
+
+```java
+/**
+ * Standard implementation of the <b>Context</b> interface. Each child container must be a Wrapper implementation to
+ * process the requests directed to a particular servlet.
+ *
+ * @author Craig R. McClanahan
+ * @author Remy Maucherat
+ */
+public class StandardContext extends ContainerBase implements Context, NotificationEmitter {
+                            //添加子容器
+    @Override
+    public void addChild(Container child) {
+
+        if (!(child instanceof Wrapper)) {
+            throw new IllegalArgumentException(sm.getString("standardContext.notWrapper"));
+        }
+        super.addChild(child);
+    }
+    
+                            //启动方法
+    @Override
+    protected synchronized void startInternal() throws LifecycleException {
+        // Post work directory
+        postWorkDirectory();
+
+        if (getLoader() == null) {
+            WebappLoader webappLoader = new WebappLoader();
+            webappLoader.setDelegate(getDelegate());
+            setLoader(webappLoader);
+        }
+       
+        // Binding thread
+        ClassLoader oldCCL = bindThread();
+
+        try {
+                // Start our child containers, if not already started
+                for (Container child : findChildren()) {
+                    if (!child.getState().isAvailable()) {
+                        child.start();
+                    }
+                }
+
+                // Start the Valves in our pipeline (including the basic),
+                // if any
+                if (pipeline instanceof Lifecycle) {
+                    ((Lifecycle) pipeline).start();
+                }
+            }
+            // Set up the context init params
+            mergeParameters();
+
+            // Call ServletContainerInitializers
+            for (Map.Entry<ServletContainerInitializer,Set<Class<?>>> entry : initializers.entrySet()) {
+                try {
+                    entry.getKey().onStartup(entry.getValue(), getServletContext());
+                } 
+            }
+
+            // Load and initialize all "load on startup" servlets
+            if (ok) {
+                if (!loadOnStartup(findChildren())) {
+                    log.error(sm.getString("standardContext.servletFail"));
+                    ok = false;
+                }
+            }
+
+            // Start ContainerBackgroundProcessor thread
+            super.threadStart();
+        } 
+
+    }
+
+                         //初始化方法
+    @Override
+    protected void initInternal() throws LifecycleException {
+        super.initInternal();
+
+        // Register the naming resources
+        if (namingResources != null) {
+            namingResources.init();
+        }
+
+        // Send j2ee.object.created notification
+        if (this.getObjectName() != null) {
+            Notification notification =
+                    new Notification("j2ee.object.created", this.getObjectName(), sequenceNumber.getAndIncrement());
+            broadcaster.sendNotification(notification);
+        }
+}
+
+```
+Context的官方解释是“A <b>Context</b> is a Container that represents a servlet context, and therefore an individual web application, in the Catalina servlet engine”。
+这里官方的说明是指Context的一个servletContext，表示一个单独的Web Application。
 
 # 五、Wrapper和Servlet
 
+StandardWrapper指的是一个单独的servlet，没有子容器，是一个Servlet的修饰器：
 
+```java
+
+    /**
+     * The (single) possibly uninitialized instance of this servlet.
+     */
+    protected volatile Servlet instance = null;
+```
+
+StandardWrapper源码如下(有删减)：
+
+```java
+
+public class StandardWrapper extends ContainerBase implements ServletConfig, Wrapper, NotificationEmitter {
+
+  
+
+
+    /**
+     * The (single) possibly uninitialized instance of this servlet.
+     */
+    protected volatile Servlet instance = null;
+
+
+    /**
+     * Flag that indicates if this instance has been initialized
+     */
+    protected volatile boolean instanceInitialized = false;
+
+
+    /**
+     * The load-on-startup order value (negative value means load on first call) for this servlet.
+     */
+    protected int loadOnStartup = -1;
+
+
+    /**
+     * Mappings associated with the wrapper.
+     */
+    protected final ArrayList<String> mappings = new ArrayList<>();
+
+
+    /**
+     * The initialization parameters for this servlet, keyed by parameter name.
+     */
+    protected HashMap<String,String> parameters = new HashMap<>();
+
+
+
+    /**
+     * The fully qualified servlet class name for this servlet.
+     */
+    protected String servletClass = null;
+
+
+    /**
+     * @return the associated servlet instance.
+     */
+    @Override
+    public Servlet getServlet() {
+        return instance;
+    }
+
+
+    /**
+     * Set the associated servlet instance.
+     */
+    @Override
+    public void setServlet(Servlet servlet) {
+        instance = servlet;
+    }
+
+
+
+    /**
+     * Add a mapping associated with the Wrapper.
+     *
+     * @param mapping The new wrapper mapping
+     */
+    @Override
+    public void addMapping(String mapping) {
+
+        mappingsLock.writeLock().lock();
+        try {
+            mappings.add(mapping);
+        } finally {
+            mappingsLock.writeLock().unlock();
+        }
+        if (parent.getState().equals(LifecycleState.STARTED)) {
+            fireContainerEvent(ADD_MAPPING_EVENT, mapping);
+        }
+
+    }
+
+                                  //装载Servlet
+    @Override
+    public synchronized void load() throws ServletException {
+        instance = loadServlet();
+
+        if (!instanceInitialized) {
+            initServlet(instance);
+        }
+
+       
+    }
+
+                                //装载Servlet
+    public synchronized Servlet loadServlet() throws ServletException {
+
+     
+        Servlet servlet;
+        try {
+            long t1 = System.currentTimeMillis();
+            // Complain if no servlet class has been specified
+            if (servletClass == null) {
+                unavailable(null);
+                throw new ServletException(sm.getString("standardWrapper.notClass", getName()));
+            }
+
+            InstanceManager instanceManager = ((StandardContext) getParent()).getInstanceManager();
+            try {
+                servlet = (Servlet) instanceManager.newInstance(servletClass);
+            }
+
+            initServlet(servlet);
+
+            fireContainerEvent("load", this);
+
+            loadTime = System.currentTimeMillis() - t1;
+        } 
+        return servlet;
+
+    }
+
+                                //Servlet初始化
+    private synchronized void initServlet(Servlet servlet) throws ServletException {
+
+        if (instanceInitialized) {
+            return;
+        }
+
+        // Call the initialization method of this servlet
+        try {
+     
+            servlet.init(facade);
+            instanceInitialized = true;
+        }
+    }
+
+
+
+    /**
+     * @return the servlet context with which this servlet is associated.
+     */
+    @Override
+    public ServletContext getServletContext() {
+        if (parent == null) {
+            return null;
+        } else if (!(parent instanceof Context)) {
+            return null;
+        } else {
+            return ((Context) parent).getServletContext();
+        }
+    }
+
+
+
+    // ------------------------------------------------------ Lifecycle Methods
+
+
+    /**
+     * Start this component and implement the requirements of
+     * {@link org.apache.catalina.util.LifecycleBase#startInternal()}.
+     *
+     * @exception LifecycleException if this component detects a fatal error that prevents this component from being
+     *                                   used
+     */
+                            //启动方法
+    @Override
+    protected synchronized void startInternal() throws LifecycleException {
+
+        // Send j2ee.state.starting notification
+        if (this.getObjectName() != null) {
+            Notification notification = new Notification("j2ee.state.starting", this.getObjectName(), sequenceNumber++);
+            broadcaster.sendNotification(notification);
+        }
+
+        // Start up this component
+        super.startInternal();
+
+        setAvailable(0L);
+
+        // Send j2ee.state.running notification
+        if (this.getObjectName() != null) {
+            Notification notification = new Notification("j2ee.state.running", this.getObjectName(), sequenceNumber++);
+            broadcaster.sendNotification(notification);
+        }
+
+    }
+
+
+    /**
+     * Stop this component and implement the requirements of
+     * {@link org.apache.catalina.util.LifecycleBase#stopInternal()}.
+     *
+     * @exception LifecycleException if this component detects a fatal error that prevents this component from being
+     *                                   used
+     */
+                                //关闭方法
+    @Override
+    protected synchronized void stopInternal() throws LifecycleException {
+
+        setAvailable(Long.MAX_VALUE);
+
+        // Send j2ee.state.stopping notification
+        if (this.getObjectName() != null) {
+            Notification notification = new Notification("j2ee.state.stopping", this.getObjectName(), sequenceNumber++);
+            broadcaster.sendNotification(notification);
+        }
+
+        // Shut down our servlet instance (if it has been initialized)
+        try {
+            unload();
+        } catch (ServletException e) {
+            getServletContext().log(sm.getString("standardWrapper.unloadException", getName()), e);
+        }
+
+        // Shut down this component
+        super.stopInternal();
+
+        // Send j2ee.state.stopped notification
+        if (this.getObjectName() != null) {
+            Notification notification = new Notification("j2ee.state.stopped", this.getObjectName(), sequenceNumber++);
+            broadcaster.sendNotification(notification);
+        }
+
+        // Send j2ee.object.deleted notification
+        Notification notification = new Notification("j2ee.object.deleted", this.getObjectName(), sequenceNumber++);
+        broadcaster.sendNotification(notification);
+
+    }
+}
+
+
+```
+
+一个Wrapper对应的是一个Servlet：
+```text
+2023-12-06 22:37:42,148|DEBUG|       DirectJDKLog.java:173 |main|Add child StandardWrapper[dispatcherServlet] StandardEngine[Tomcat].StandardHost[localhost].TomcatEmbeddedContext[]
+2023-12-06 22:37:42,148|DEBUG|       DirectJDKLog.java:173 |main|Setting state for [StandardEngine[Tomcat].StandardHost[localhost].TomcatEmbeddedContext[].StandardWrapper[dispatcherServlet]] to [INITIALIZING]
+2023-12-06 22:37:42,148|DEBUG|       DirectJDKLog.java:173 |main|Setting state for [StandardEngine[Tomcat].StandardHost[localhost].TomcatEmbeddedContext[].StandardWrapper[dispatcherServlet]] to [INITIALIZED]
+2023-12-06 22:37:42,148|DEBUG|       DirectJDKLog.java:173 |main|Setting state for [StandardEngine[Tomcat].StandardHost[localhost].TomcatEmbeddedContext[].StandardWrapper[dispatcherServlet]] to [STARTING_PREP
+```
+
+在StandardContext这个方法中会执行Wrapper的load方法，从而通过loadServlet方法装载Servlet。
+
+```java
+public boolean loadOnStartup(Container children[]) {
+
+        // Collect "load on startup" servlets that need to be initialized
+        TreeMap<Integer,ArrayList<Wrapper>> map = new TreeMap<>();
+        for (Container child : children) {
+            Wrapper wrapper = (Wrapper) child;
+            int loadOnStartup = wrapper.getLoadOnStartup();
+            if (loadOnStartup < 0) {
+                continue;
+            }
+            Integer key = Integer.valueOf(loadOnStartup);
+            map.computeIfAbsent(key, k -> new ArrayList<>()).add(wrapper);
+        }
+
+        // Load the collected "load on startup" servlets
+        for (ArrayList<Wrapper> list : map.values()) {
+            for (Wrapper wrapper : list) {
+                try {
+                    wrapper.load();
+                } catch (ServletException e) {
+                    getLogger().error(
+                            sm.getString("standardContext.loadOnStartup.loadException", getName(), wrapper.getName()),
+                            StandardWrapper.getRootCause(e));
+                    // NOTE: load errors (including a servlet that throws
+                    // UnavailableException from the init() method) are NOT
+                    // fatal to application startup
+                    // unless failCtxIfServletStartFails="true" is specified
+                    if (getComputedFailCtxIfServletStartFails()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+
+    }
+```
+
+StandardWrapper是一个Servlet的包装类，比如DispatcherServlet的StandardWrapper如下：
+
+![StandardWrapper](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/StandardWrapper.png)
+
+
+到这里Tomcat相关组件的初始化过程就解读完成了，下一篇文件解读启动过程，也就是start方法。
 # 六、参考材料
 
 1. 《深入剖析Tomcat》 <br>

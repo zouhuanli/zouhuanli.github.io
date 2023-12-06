@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Tomcat源码解读三:Tomcat启动流程-启动(start方法)"
+title: "Tomcat源码解读三:Tomcat启动流程-启动过程(start方法)"
 date: 2023-12-04
 tags: [ Tomcat ]
 comments: true
