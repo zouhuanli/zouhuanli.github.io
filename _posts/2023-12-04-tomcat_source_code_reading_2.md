@@ -767,7 +767,7 @@ protected Digester createStartDigester() {
 
 上面源码已经确定了Server的具体类型是StandardServer。看下Server的类继承关系图：
 
-![StandardServer](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/StandardServer.png)
+![StandardServer](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-04-tomcat_source_code_reading_2/StandardServer.png)
 
 
 StandardServer实现了Lifecycle生命周期接口，其他的如Service、Container(四类)也都实现了Lifecycle生命周期接口。跟踪Catalina的这行代码：
@@ -841,7 +841,7 @@ XXXInternal方法这里会议很多类似的，如stopInternal、startInternal�
 
 同时也能确定Service是可以创建多个的，上面流程中的bootstrap、Catalina、Server是只创建了一个实例。如果使用boot启动这里可以调试到services的值
 
-![services](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/services.png)
+![services](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-04-tomcat_source_code_reading_2/services.png)
 
 这个Service是在在Tomcat(内嵌的Tomcat启动器)这行代码创建的：
 ```java
@@ -870,7 +870,7 @@ XXXInternal方法这里会议很多类似的，如stopInternal、startInternal�
 
 StandardService的类关系图如下：
 
-![StandardService](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/StandardService.png)
+![StandardService](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-04-tomcat_source_code_reading_2/StandardService.png)
 
 我们直接来到initInternal方法，如下：
 
@@ -916,7 +916,7 @@ StandardService的类关系图如下：
 从源码可以看到Service的初始化方法主要是初始化Engine、Executor、Connector等组件。
 Executor线程池拓展了原生的Java的Executor线程池接口，其类关系图如下：
 
-![StandardThreadExecutor](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/StandardThreadExecutor.png)
+![StandardThreadExecutor](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-04-tomcat_source_code_reading_2/StandardThreadExecutor.png)
 
 在Tomcat10居然就已有虚拟线程的实现了，官方的VirtualThread是JDK21（2023年9月）才发布。
 
@@ -1041,7 +1041,7 @@ public class Connector extends LifecycleMBeanBase {
 ```
 Connector的init方法主要是创建CoyoteAdapter适配器和执行protocolHandler协议处理器的初始化。connectors如下，其内部的协议处理器是Http11NioProtocol：
 
-![connectors](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/connectors.png)
+![connectors](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-04-tomcat_source_code_reading_2/connectors.png)
 
 下面来到容器组件的初始化流程。
 
@@ -1049,7 +1049,7 @@ Connector的init方法主要是创建CoyoteAdapter适配器和执行protocolHand
 
 默认的四类容器组件有Engine、Host、Context、Wrapper四类。类继承关系图如下：
 
-![Container](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/Container.png)
+![Container](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-04-tomcat_source_code_reading_2/Container.png)
 
 默认的容器组件实现类是StandardXXX,下面先解读一下StandardEngine的源码。
 
@@ -1642,7 +1642,7 @@ public boolean loadOnStartup(Container children[]) {
 
 StandardWrapper是一个Servlet的包装类，比如DispatcherServlet的StandardWrapper如下：
 
-![StandardWrapper](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-05-tomcat_source_code_reading_2/StandardWrapper.png)
+![StandardWrapper](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2023-12-04-tomcat_source_code_reading_2/StandardWrapper.png)
 
 
 到这里Tomcat相关组件的初始化过程就解读完成了，下一篇文件解读启动过程，也就是start方法。
