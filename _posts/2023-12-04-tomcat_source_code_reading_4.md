@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文简单解读Tomcat的Server和Service组件。Server服务器，一个Tomcat应用只会创建和启动一个Server；Service服务,一个Server可以创建和启动多个Service。
+本文简单解读Tomcat的Server和Service组件。Server服务器，一个Tomcat应用只会创建和启动一个Server；Service服务,一个Server可以创建和启动多个Service。<br>
 本系列的源码工程为：[HowTomcatWorksSourceCode](https://github.com/zouhuanli/HowTomcatWorksSourceCode.git)。
 
 # 一、Server
