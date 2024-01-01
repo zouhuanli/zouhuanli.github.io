@@ -15,7 +15,7 @@ author: zouhuanli
 Engine和Host都是属于Container容器的一类。一共由四类的容器：Engine、Host、Context、Wrapper。其基本概念如下：<br>
 Engine:表示整个Servlet的引擎。<br>
 Host：包含一个或者多个Context容器的虚拟主机。<br>
-Context:<strong>表示一个Web应用，可以由多个Wrapper</strong>。<br>
+Context:<strong>表示一个Web应用，可以有多个Wrapper</strong>。<br>
 Wrapper:表示一个独立的Servlet。
 
 四种容器类的类关系图如下：
@@ -165,7 +165,7 @@ Engine的标准实现类StandardEngine的start和init方法如下：
 ```
 可以看到这里的阀是需要一个Host的。
 
-我们再来到StandardHost的源码。
+下面我们再来到StandardHost的源码。
 
 ## 2.2  StandardHost
 
