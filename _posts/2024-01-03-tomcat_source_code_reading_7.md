@@ -10,8 +10,8 @@ author: zouhuanli
 本文简单解读Connector连接器组件。
 本系列的源码工程为：[HowTomcatWorksSourceCode](https://github.com/zouhuanli/HowTomcatWorksSourceCode.git)。
 
-todo~
 # 一、概述
+我们先看一下这个Tomcat的整体架构图：
 
 
 # 二、源码解读
