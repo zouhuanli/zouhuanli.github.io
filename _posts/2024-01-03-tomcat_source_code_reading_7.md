@@ -1028,7 +1028,7 @@ public interface Processor {
 }
 ```
 
-而NioEndpoint（EndPoint）内部最重要的内部对象就是:acceptor,ServerSocketChannel,Poller这三个。
+而NioEndpoint（EndPoint）内部最重要的内部对象就是:acceptor,SocketProcessor,Poller这三个。
 
 ```java
 
