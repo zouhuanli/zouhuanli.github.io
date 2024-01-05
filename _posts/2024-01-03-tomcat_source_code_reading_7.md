@@ -1005,9 +1005,9 @@ public class CoyoteAdapter implements Adapter {
     protected Adapter adapter;
 ```
 
-AbstractProtocol组合了三个对象：一个NIO的端点，一个ConnectionHandler，一个Adapter（连接器的适配器）和一组连接(Socket)的处理器。
+AbstractProtocol组合了四个对象：一个NIO的端点，一个ConnectionHandler，一个Adapter（连接器的适配器）和一组连接(Socket)的处理器。
 
-其中处理器Processor最主要的方法就是process，处理一个具体Socket的事件。
+其中处理器Processor最主要的方法就是process方法，处理一个具体Socket的事件。
 
 ```java
 public interface Processor {
