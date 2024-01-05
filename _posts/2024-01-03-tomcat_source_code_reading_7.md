@@ -57,7 +57,7 @@ CoyoteAdapter是Connector的适配器，主要提供service方法处理Http请�
 
 # 二、源码解读
 
-## 2，1 Connector
+## 2.1 Connector
 
 tomcat中Connector类主要源码如：
 
