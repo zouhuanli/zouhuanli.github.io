@@ -1045,7 +1045,7 @@ public interface Processor {
 3. Poller轮询器获取PollerEvent，将Socket封装为SocketProcessor(Worker)，提交给线程池(Worker线程池)执行。SocketProcessor由Http11Processor处理，并最终来到Http11Processor的service方法。<br>
 4. Http11Processor调用连接器的适配器Adapter处理，Adapter(连接器)连接Servlet容器，service方法最终调用Container(及其Pipeline和Valve)的处理方法。<br>
 
-具体的执行流程和调试过程，笔者会在后面文章做详细的解读。本文对ProtocolHandler的解读主要是旨在理解连接器下相关组件的关系。
+具体的执行流程和调试过程，笔者会在后面文章做详细的解读。本文对ProtocolHandler的解读主要是旨在理解连接器相关组件的关系。
 
 
 # 四、简单测试
