@@ -12,6 +12,7 @@ author: zouhuanli
 
 # 一、概述
 我们先看一下这个Tomcat的整体架构图：
+
 ![tomcat-x-design-2-1](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-03-tomcat_source_code_reading_7/tomcat-x-design-2-1.jpeg)
 
 从这个图可以看到Connector连接器是输入Service内部的，由Service创建，连接了Service和Container。<br>
@@ -59,6 +60,7 @@ CoyoteAdapter是Connector的适配器，主要提供service方法处理Http请�
 ## 2，1 Connector
 
 tomcat中Connector类主要源码如：
+
 ```java
 
 public class Connector extends LifecycleMBeanBase {
@@ -291,6 +293,7 @@ public class Connector extends LifecycleMBeanBase {
 ## 2.2 CoyoteAdapter
 
 这里看下CoyoteAdapter的主要代码：
+
 ```java
 /**
  * Implementation of a request processor which delegates the processing to a Coyote processor.
@@ -970,13 +973,243 @@ public class CoyoteAdapter implements Adapter {
 
 ```
 
-这里最重要的就是service方法，可以作为分析Tomcat处理http请求的代码入口。跟踪引用，service是由Processor（Http处理器）来调用的。
+这里最重要的就是service方法，可以作为分析Tomcat处理http请求的代码入口。跟踪引用，service方法是由Processor（Http处理器）来调用的。
 
 
 # 三、协议处理器ProtocolHandler
 
+我们先看下ProtocolHandler的实现类，如下：
+
+![ProtocolHandler](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-03-tomcat_source_code_reading_7/ProtocolHandler.png)
+
+图片中有Tomcat默认的Http 1.1的NIO的协议处理器Http11NioProtocol。ProtocolHandler的典型方法有：init、start、pause、resume、stop、destroy和create等方法。
+
+其中实现基类AbstractProtocol有这四个需要重点关注的内部对象：
+```java
+
+    /**
+     * Endpoint that provides low-level network I/O - must be matched to the ProtocolHandler implementation
+     * (ProtocolHandler using NIO, requires NIO Endpoint etc.).
+     */
+    private final AbstractEndpoint<S, ?> endpoint;
+
+
+    private Handler<S> handler;
+
+
+    private final Set<Processor> waitingProcessors = ConcurrentHashMap.newKeySet();
+
+    /**
+     * The adapter provides the link between the ProtocolHandler and the connector.
+     */
+    protected Adapter adapter;
+```
+
+AbstractProtocol组合了三个对象：一个NIO的端点，一个ConnectionHandler，一个Adapter（连接器的适配器）和一组连接(Socket)的处理器。
+
+其中处理器Processor最主要的方法就是process，处理一个具体Socket的事件。
+
+```java
+public interface Processor {
+
+    /**
+     * Process a connection. This is called whenever an event occurs (e.g. more data arrives) that allows processing to
+     * continue for a connection that is not currently being processed.
+     *
+     * @param socketWrapper The connection to process
+     * @param status        The status of the connection that triggered this additional processing
+     *
+     * @return The state the caller should put the socket in when this method returns
+     *
+     * @throws IOException If an I/O error occurs during the processing of the request
+     */
+    SocketState process(SocketWrapperBase<?> socketWrapper, SocketEvent status) throws IOException;
+    //......
+}
+```
+
+而NioEndpoint（EndPoint）内部最重要的内部对象就是:acceptor,ServerSocketChannel,Poller这三个。
+
+```java
+
+    /**
+     * Thread used to accept new connections and pass them to worker threads.
+     */
+    protected Acceptor<U> acceptor;
+```
+
+这些对象之间的关系是：
+
+1. ProtocolHandler（Http11NioProtocol）内部包含NioEndpoint、ConnectionHandler、Processor（Http11Processor）、Adapter。NioEndpoint内包含Acceptor、Poller、SocketProcessor(Worker)。<br>
+2. Acceptor是一个轮询线程（死循环），接受连接的Socket，并包装为NioSocketWrapper，然后转换为PollerEvent，注册到Poller的事件队列中。<br>
+3. Poller轮询器获取PollerEvent，将Socket封装为SocketProcessor(Worker)，提交给线程池(Worker线程池)执行。SocketProcessor由Http11Processor处理，并最终来到Http11Processor的service方法。<br>
+4. Http11Processor调用连接器的适配器Adapter处理，Adapter(连接器)连接Servlet容器，service方法最终调用Container(及其Pipeline和Valve)的处理方法。<br>
+
+具体的执行流程和调试过程，笔者会在后面文章做详细的解读。本文对ProtocolHandler的解读主要是旨在理解连接器下相关组件的关系。
+
 
 # 四、简单测试
+这里使用原书第3章的源码。
+连接器:
+```java
+public class HttpConnector implements Runnable {
+
+  boolean stopped;
+  private String scheme = "http";
+
+  public String getScheme() {
+    return scheme;
+  }
+
+  public void run() {
+    ServerSocket serverSocket = null;
+    int port = 8080;
+    try {
+      serverSocket =  new ServerSocket(port, 1, InetAddress.getByName("127.0.0.1"));
+    }
+    catch (IOException e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+    while (!stopped) {
+      // Accept the next incoming connection from the server socket
+      Socket socket = null;
+      try {
+        socket = serverSocket.accept();
+      }
+      catch (Exception e) {
+        continue;
+      }
+      // Hand this socket off to an HttpProcessor
+      HttpProcessor processor = new HttpProcessor(this);
+      processor.process(socket);
+    }
+  }
+
+  public void start() {
+    Thread thread = new Thread(this);
+    thread.start();
+  }
+}
+```
+
+Http的Socket的处理器：
+```java
+public class HttpProcessor {
+
+    public HttpProcessor(HttpConnector connector) {
+        this.connector = connector;
+    }
+
+    /**
+     * The HttpConnector with which this processor is associated.
+     */
+    private HttpConnector connector = null;
+    private HttpRequest request;
+    private HttpRequestLine requestLine = new HttpRequestLine();
+    private HttpResponse response;
+
+    protected String method = null;
+    protected String queryString = null;
+
+    /**
+     * The string manager for this package.
+     */
+    protected StringManager sm =
+            StringManager.getManager("ex03.pyrmont.connector.http");
+
+    public void process(Socket socket) {
+        SocketInputStream input = null;
+        OutputStream output = null;
+        try {
+            input = new SocketInputStream(socket.getInputStream(), 2048);
+            output = socket.getOutputStream();
+
+            // create HttpRequest object and parse
+            request = new HttpRequest(input);
+
+            // create HttpResponse object
+            response = new HttpResponse(output);
+            response.setRequest(request);
+
+            response.setHeader("Server", "Pyrmont Servlet Container");
+
+            parseRequest(input, output);
+            parseHeaders(input);
+
+            //check if this is a request for a servlet or a static resource
+            //a request for a servlet begins with "/servlet/"
+            if (request.getRequestURI().startsWith("/servlet/")) {
+                ServletProcessor processor = new ServletProcessor();
+                processor.process(request, response);
+            } else {
+                StaticResourceProcessor processor = new StaticResourceProcessor();
+                processor.process(request, response);
+            }
+
+            // Close the socket
+            socket.close();
+            // no shutdown for this application
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+Servlet的处理器（简化版的Container）:
+```java
+public class ServletProcessor {
+
+  public void process(HttpRequest request, HttpResponse response) {
+
+    String uri = request.getRequestURI();
+    String servletName = uri.substring(uri.lastIndexOf("/") + 1);
+    URLClassLoader loader = null;
+    try {
+      // create a URLClassLoader
+      URL[] urls = new URL[1];
+      URLStreamHandler streamHandler = null;
+      File classPath = new File(Constants.WEB_ROOT);
+      String repository = (new URL("file", null, classPath.getCanonicalPath() + File.separator)).toString() ;
+      urls[0] = new URL(null, repository, streamHandler);
+      loader = new URLClassLoader(urls);
+    }
+    catch (IOException e) {
+      System.out.println(e.toString() );
+    }
+    Class myClass = null;
+    try {
+      myClass = loader.loadClass(servletName);
+    }
+    catch (ClassNotFoundException e) {
+      System.out.println(e.toString());
+    }
+
+    Servlet servlet = null;
+
+    try {
+      servlet = (Servlet) myClass.newInstance();
+      HttpRequestFacade requestFacade = new HttpRequestFacade(request);
+      HttpResponseFacade responseFacade = new HttpResponseFacade(response);
+      servlet.service(requestFacade, responseFacade);
+      ((HttpResponse) response).finishResponse();
+    }
+    catch (Exception e) {
+      System.out.println(e.toString());
+    }
+    catch (Throwable e) {
+      System.out.println(e.toString());
+    }
+  }
+}
+```
+
+执行测试：浏览器输入http://localhost:8080//servlet/PrimitiveServlet。
+
+结果返回：
+```text
+Hello. Roses are red.
+```
 
 # 五、参数资料
 
