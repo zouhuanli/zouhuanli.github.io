@@ -1039,12 +1039,12 @@ public interface Processor {
 ```
 
 这些对象之间的关系是：
-
+<strong>
 1. ProtocolHandler（Http11NioProtocol）内部包含NioEndpoint、ConnectionHandler、Processor（Http11Processor）、Adapter。NioEndpoint内包含Acceptor、Poller、SocketProcessor(Worker)。<br>
 2. Acceptor是一个轮询线程（死循环），接受连接的Socket，并包装为NioSocketWrapper，然后转换为PollerEvent，注册到Poller的事件队列中。<br>
 3. Poller轮询器获取PollerEvent，将Socket封装为SocketProcessor(Worker)，提交给线程池(Worker线程池)执行。SocketProcessor由Http11Processor处理，并最终来到Http11Processor的service方法。<br>
 4. Http11Processor调用连接器的适配器Adapter处理，Adapter(连接器)连接Servlet容器，service方法最终调用Container(及其Pipeline和Valve)的处理方法。<br>
-
+</strong>
 具体的执行流程和调试过程，笔者会在后面文章做详细的解读。本文对ProtocolHandler的解读主要是旨在理解连接器相关组件的关系。
 
 
