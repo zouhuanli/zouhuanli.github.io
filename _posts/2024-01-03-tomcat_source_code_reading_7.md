@@ -1049,7 +1049,7 @@ public interface Processor {
 
 
 # 四、简单测试
-这里使用原书第3章的源码。
+这里使用原书第3章的源码,只为演示简单的连接器功能。
 连接器:
 ```java
 public class HttpConnector implements Runnable {
