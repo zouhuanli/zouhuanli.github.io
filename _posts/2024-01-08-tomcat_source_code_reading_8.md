@@ -55,7 +55,7 @@ Connector连接器相关组件工作原理如下：
 
 ![Connector](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-08-tomcat_source_code_reading_8/Connector.png)
 
-图片来源[!https://www.cnblogs.com/arthinking/p/14509130.html](https://www.cnblogs.com/arthinking/p/14509130.html).
+图片来源:[https://www.cnblogs.com/arthinking/p/14509130.html](https://www.cnblogs.com/arthinking/p/14509130.html).
 
 图表帮助我们记忆和理解，如果要探究这些图表/流程是从哪里来的，还是需要去研究源码。
 
