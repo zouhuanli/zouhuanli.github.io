@@ -1459,6 +1459,8 @@ Acceptor，Poller，Executor的创建和启动在NioEndpoint的start方法内，
 
 Tomcat处理HTTP请求是外层组件到内层组件，而创建和启动组件一般是内层组件到外层组件，正好相反。
 
+后面文件笔者将会结合这个系列全部的源码解读内容，实际调试和追究一笔HTTP请求在Tomcat的执行流程。
+
 # 四、参考材料
 
 1.《深入剖析Tomcat》
