@@ -7,7 +7,7 @@ comments: true
 author: zouhuanli
 ---
 
-本文简单解读Connector连接器组件内的NioEndpoint。
+本文简单解读Connector连接器组件内的NioEndpoint。<br>
 本系列的源码工程为：[HowTomcatWorksSourceCode](https://github.com/zouhuanli/HowTomcatWorksSourceCode.git)。
 
 # 一、概述
