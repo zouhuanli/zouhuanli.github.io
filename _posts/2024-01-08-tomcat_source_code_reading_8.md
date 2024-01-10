@@ -45,12 +45,12 @@ public class NioEndpoint extends AbstractNetworkChannelEndpoint<NioChannel,Socke
 
 ```
 Connector连接器相关组件工作原理如下：
-
-1. 其内部主要由acceptor创建ServerSocket，接受来自客户端的连接，封装为Event，发布到事件队列中。<br>
+<strong>
+1. 其内部主要由acceptor创建ServerSocket，接受来自客户端的连接Socket，封装为Event，发布到事件队列中。<br>
 2. 再由poller拉取Event将socket封装为SocketWrapper，并创建SocketProcessor(worker任务)，提交到Worker线程池。<br>
-3. Worker线程池的任务由Http11Processor处理。<br>
-4. Http11Processor再调用CoyoteAdapter处理。CoyoteAdapter再连接容器，将请求交给Container去处理。<br>
-
+3. Worker线程池的任务SocketProcessor由Http11Processor处理。<br>
+4. Http11Processor调用CoyoteAdapter处理。CoyoteAdapter连接容器将请求交给Container去处理。<br>
+</strong>
 其中NioEndpoint是非常核心的组件，实现了acceptor+poller+Workers的线程模型，非常值得重点研究。其也体现Java同步NIO的网络编程模型。Connector整体的工作原理如下图：
 
 ![Connector](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-08-tomcat_source_code_reading_8/Connector.png)
@@ -536,7 +536,7 @@ Poller同样实现了Runnable，内部run方法也是一个"死循环"。其run�
         }
 ```
 
-这里两个最重要的方法events()-获取事件和注册SelectionKey,processKey-处理单个Socket。
+这里两个最重要的方法events()-获取事件和注册SelectionKey；processKey-处理单个Socket。
 ```java
      /**
          * Processes events in the event queue of the Poller.
