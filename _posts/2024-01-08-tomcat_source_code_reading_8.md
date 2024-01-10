@@ -1408,6 +1408,57 @@ Adapter的默认实现是CoyoteAdapter,其Service方法连接了Container/容器
                 connector.getService().getContainer().getPipeline().getFirst().invoke(request, response);
 ```
 
+Tomcat处理HTTP请求是按照:Acceptor--->Poller--->SocketProcessor(Worker)和Executor--->Http11Processor--->Http11Processor--->CoyoteAdapter--->Container和Valve--->Servlet，的执行流程的。
+
+Acceptor，Poller，Executor的创建和启动在NioEndpoint的start方法内，如下：
+```java
+
+    /**
+     * Start the NIO endpoint, creating acceptor, poller threads.
+     */
+    @Override
+    public void startInternal() throws Exception {
+
+        if (!running) {
+            running = true;
+            paused = false;
+
+            if (socketProperties.getProcessorCache() != 0) {
+                processorCache = new SynchronizedStack<>(SynchronizedStack.DEFAULT_SIZE,
+                        socketProperties.getProcessorCache());
+            }
+            if (socketProperties.getEventCache() != 0) {
+                eventCache = new SynchronizedStack<>(SynchronizedStack.DEFAULT_SIZE,
+                        socketProperties.getEventCache());
+            }
+            int actualBufferPool =
+                    socketProperties.getActualBufferPool(isSSLEnabled() ? getSniParseLimit() * 2 : 0);
+            if (actualBufferPool != 0) {
+                nioChannels = new SynchronizedStack<>(SynchronizedStack.DEFAULT_SIZE,
+                        actualBufferPool);
+            }
+
+            // Create worker collection
+            if (getExecutor() == null) {
+                createExecutor();
+            }
+
+            initializeConnectionLatch();
+
+            // Start poller thread
+            poller = new Poller();
+            Thread pollerThread = new Thread(poller, getName() + "-Poller");
+            pollerThread.setPriority(threadPriority);
+            pollerThread.setDaemon(true);
+            pollerThread.start();
+
+            startAcceptorThread();
+        }
+    }
+```
+
+Tomcat处理HTTP请求是外层组件到内层组件，而创建和启动组件一般是内层组件到外层组件，正好相反。
+
 # 四、参考材料
 
 1.《深入剖析Tomcat》
