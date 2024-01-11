@@ -204,7 +204,7 @@ Http11Processor的service方法主要是解析header，然后将请求转交给A
                     getAdapter().service(request, response);
 ```
 
-![Http11Processor#service](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-11-tomcat_source_code_reading_9/Http11Processor#service.png)
+![Http11Processor#service](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-11-tomcat_source_code_reading_9/Http11Processor_service.png)
 
 
 最后请求转交给CoyoteAdapter适配器处理。
