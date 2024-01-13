@@ -10,6 +10,16 @@ author: zouhuanli
 本文简单解读Connector连接器组件内的NioEndpoint。<br>
 本系列的源码工程为：[HowTomcatWorksSourceCode](https://github.com/zouhuanli/HowTomcatWorksSourceCode.git)。
 
+本文目录为：
+- [一、概述](#一概述)
+- [二、NioEndpoint](#二nioendpoint)
+  - [2.1 NioEndpoint](#21-nioendpoint)
+  - [2.2 Acceptor](#22-acceptor)
+  - [2.3 Poller](#23-poller)
+  - [2.4 SocketProcessor(worker)](#24-socketprocessorworker)
+- [三、Http11Processor](#三http11processor)
+- [四、参考材料](#四参考材料)
+
 # 一、概述
 
 上一篇文章有讲到ProtocolHandler的实现类，Tomcat 8和之后默认的协议处理器是AbstractHttp11Protocol。AbstractHttp11Protocol的构造方法创建了NioEndpoint。
