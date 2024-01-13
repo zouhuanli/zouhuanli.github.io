@@ -11,7 +11,8 @@ author: zouhuanli
 本系列的源码工程为：[HowTomcatWorksSourceCode](https://github.com/zouhuanli/HowTomcatWorksSourceCode.git)。
 这两篇文章会串联本系列之前的所有的文章，从客户端连接开始一直到Servlet的处理方法。相信有之前文章的基础，追踪HTTP请求的处理过程会比较简单的。<br>
 本文目录为：
-[toc]
+
+[TOC]
 
 # 一、入口
 

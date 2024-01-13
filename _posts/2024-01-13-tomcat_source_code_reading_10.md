@@ -10,7 +10,8 @@ author: zouhuanli
 本篇文章继续解读HTTP请求的处理过程。
 本系列的源码工程为：[HowTomcatWorksSourceCode](https://github.com/zouhuanli/HowTomcatWorksSourceCode.git)。<br>
 本文目录为：
-[toc]
+
+[TOC]
 
 # 一、容器
 
@@ -20,7 +21,7 @@ author: zouhuanli
    // Calling the container
                 connector.getService().getContainer().getPipeline().getFirst().invoke(request, response);
 ```
-这里的定级Container是Engine，我们来到Engine和其Valve相关的代码。容器StandardEngine自身是没有invoke或者service方法，我们进入StandardEngineValve这个类。
+这里的顶级Container是Engine，我们来到Engine和其Valve相关的代码。容器StandardEngine自身是没有invoke或者service方法，我们进入StandardEngineValve这个类。
 
 
 ## 1.1 Engine
