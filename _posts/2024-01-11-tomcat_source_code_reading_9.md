@@ -11,10 +11,17 @@ author: zouhuanli
 本系列的源码工程为：[HowTomcatWorksSourceCode](https://github.com/zouhuanli/HowTomcatWorksSourceCode.git)。
 这两篇文章会串联本系列之前的所有的文章，从客户端连接开始一直到Servlet的处理方法。相信有之前文章的基础，追踪HTTP请求的处理过程会比较简单的。<br>
 本文目录为：
+- [1.入口](#1入口)
+- [2.端点](#2端点)
+  - [2.1 Acceptor](#21-acceptor)
+  - [2.2 Poller](#22-poller)
+  - [2.3 Worker](#23-worker)
+- [3.协议](#3协议)
+- [4.适配器](#4适配器)
+- [5.参考材料](#5参考材料)
 
-[TOC]
 
-# 一、入口
+# 1.入口
 
 获取/接受客户端连接Socket自然是ServerSocketChannel#accept()方法。
 
@@ -35,9 +42,9 @@ else {
    socket = endpoint.serverSocketAccept();
 ```
 
-# 二、端点
+# 2.端点
 
-## 2.1 Acceptor
+##  2.1 Acceptor
 我们首先进入Acceptor的run方法. 其serverSocketAccept如下：
 ```java
  @Override
@@ -70,7 +77,7 @@ else {
 这样Acceptor对一次accept获取的socket便处理完成。下面来到Poller对Event（Socket）的处理流程。
 
 
-## 2.2 Poller
+##  2.2 Poller
 
 Poller最核心的方法也是run方法。
 
@@ -137,7 +144,7 @@ public boolean processSocket(SocketWrapperBase<S> socketWrapper,
 这里提交的task是SocketProcessor，内部封装socketWrapper和event。socketWrapper自己实现runnable，作为Worker线程执行。
 
 
-## 2.3 Worker
+##  2.3 Worker
 
 上面将SocketProcessor提交到线程池之后，线程池开始创建线程执行SocketProcessor。
 
@@ -178,7 +185,7 @@ SocketProcessor的源码之前解读过，这里直接进入doRun()方法。来�
 下面则是进入Processor(Http11Processor)的处理方法。
 
 
-# 三、协议
+# 3.协议
 
 AbstractProcessorLight的process方法如下：
 
@@ -212,7 +219,7 @@ Http11Processor的service方法主要是解析header，然后将请求转交给A
 
 最后请求转交给CoyoteAdapter适配器处理。
 
-# 四、适配器
+# 4.适配器
 
 我们继续跟踪执行流程来到CoyoteAdapter的service方法。其源码如下：
 ```java
@@ -351,7 +358,7 @@ Http11Processor的service方法主要是解析header，然后将请求转交给A
 
 接下来的请求就是交给容器和Servlet处理了。
 
-# 五、参考材料
+# 5.参考材料
 
 1.《深入剖析Tomcat》
 
