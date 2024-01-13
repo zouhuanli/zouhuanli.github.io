@@ -211,10 +211,142 @@ Http11Processor的service方法主要是解析header，然后将请求转交给A
 
 # 四、适配器
 
-我们继续跟踪执行流程来到CoyoteAdapter的service方法。
+我们继续跟踪执行流程来到CoyoteAdapter的service方法。其源码如下：
+```java
+ @Override
+    public void service(org.apache.coyote.Request req, org.apache.coyote.Response res) throws Exception {
 
-TODO---
+        Request request = (Request) req.getNote(ADAPTER_NOTES);
+        Response response = (Response) res.getNote(ADAPTER_NOTES);
 
+        if (request == null) {
+            // Create objects
+            request = connector.createRequest();
+            request.setCoyoteRequest(req);
+            response = connector.createResponse();
+            response.setCoyoteResponse(res);
+
+            // Link objects
+            request.setResponse(response);
+            response.setRequest(request);
+
+            // Set as notes
+            req.setNote(ADAPTER_NOTES, request);
+            res.setNote(ADAPTER_NOTES, response);
+
+            // Set query string encoding
+            req.getParameters().setQueryStringCharset(connector.getURICharset());
+        }
+
+        if (connector.getXpoweredBy()) {
+            response.addHeader("X-Powered-By", POWERED_BY);
+        }
+
+        boolean async = false;
+        boolean postParseSuccess = false;
+
+        req.setRequestThread();
+
+        try {
+            // Parse and set Catalina and configuration specific
+            // request parameters
+            postParseSuccess = postParseRequest(req, request, res, response);
+            if (postParseSuccess) {
+                // check valves if we support async
+                request.setAsyncSupported(connector.getService().getContainer().getPipeline().isAsyncSupported());
+                // Calling the container
+                connector.getService().getContainer().getPipeline().getFirst().invoke(request, response);
+            }
+            if (request.isAsync()) {
+                async = true;
+                ReadListener readListener = req.getReadListener();
+                if (readListener != null && request.isFinished()) {
+                    // Possible the all data may have been read during service()
+                    // method so this needs to be checked here
+                    ClassLoader oldCL = null;
+                    try {
+                        oldCL = request.getContext().bind(false, null);
+                        if (req.sendAllDataReadEvent()) {
+                            req.getReadListener().onAllDataRead();
+                        }
+                    } finally {
+                        request.getContext().unbind(false, oldCL);
+                    }
+                }
+
+                Throwable throwable = (Throwable) request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
+
+                // If an async request was started, is not going to end once
+                // this container thread finishes and an error occurred, trigger
+                // the async error process
+                if (!request.isAsyncCompleting() && throwable != null) {
+                    request.getAsyncContextInternal().setErrorState(throwable, true);
+                }
+            } else {
+                request.finishRequest();
+                response.finishResponse();
+            }
+
+        } catch (IOException e) {
+            // Ignore
+        } finally {
+            AtomicBoolean error = new AtomicBoolean(false);
+            res.action(ActionCode.IS_ERROR, error);
+
+            if (request.isAsyncCompleting() && error.get()) {
+                // Connection will be forcibly closed which will prevent
+                // completion happening at the usual point. Need to trigger
+                // call to onComplete() here.
+                res.action(ActionCode.ASYNC_POST_PROCESS, null);
+                async = false;
+            }
+
+            // Access log
+            if (!async && postParseSuccess) {
+                // Log only if processing was invoked.
+                // If postParseRequest() failed, it has already logged it.
+                Context context = request.getContext();
+                Host host = request.getHost();
+                // If the context is null, it is likely that the endpoint was
+                // shutdown, this connection closed and the request recycled in
+                // a different thread. That thread will have updated the access
+                // log so it is OK not to update the access log here in that
+                // case.
+                // The other possibility is that an error occurred early in
+                // processing and the request could not be mapped to a Context.
+                // Log via the host or engine in that case.
+                long time = System.nanoTime() - req.getStartTimeNanos();
+                if (context != null) {
+                    context.logAccess(request, response, time, false);
+                } else if (response.isError()) {
+                    if (host != null) {
+                        host.logAccess(request, response, time, false);
+                    } else {
+                        connector.getService().getContainer().logAccess(request, response, time, false);
+                    }
+                }
+            }
+
+            req.getRequestProcessor().setWorkerThreadName(null);
+            req.clearRequestThread();
+
+            // Recycle the wrapper request and response
+            if (!async) {
+                updateWrapperErrorCount(request, response);
+                request.recycle();
+                response.recycle();
+            }
+        }
+    }
+```
+其内部主要功能就是解析请求，创建Request和Response，以及将request和response交给容器处理。
+```java
+// Calling the container
+                connector.getService().getContainer().getPipeline().getFirst().invoke(request, response);
+```
+容器自己是没有service或者invoke方法的，由其Valve-阀来执行具体的请求。Valve有一个基础阀，作为容器阀执行链的最后一个阀，如StandardEngineValve。
+
+接下来的请求就是交给容器和Servlet处理了。
 
 # 五、参考材料
 
