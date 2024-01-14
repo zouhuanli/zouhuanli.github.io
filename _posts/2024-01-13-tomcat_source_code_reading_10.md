@@ -751,11 +751,12 @@ DispatcherServlet实现Servlet接口，并最终将由doDispatch方法处理请�
 3. 容器处理之后，请求交给Servlet处理。
 4. Servlet则由具体的实现类去处理，SpringMVC默认是DispatcherServlet，最终由Handler(Controller)处理。也可以自己实现Servlet定义来处理。
 
-Htpp请求的处理流程图如下：
-
-todo~
+Http请求的处理流程图如下：
 
 
+![Acceptor_run](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-13-tomcat_source_code_reading_10/Acceptor_run.png)
+
+这里注意一点是管道Pipeline内必包含容器的基础阀，基础阀在该容器阀链表的最后一个执行。
 
 # 五、参考材料
 
