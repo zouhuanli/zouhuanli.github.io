@@ -5,7 +5,7 @@ permalink: /about/
 ---
 
 ## 关于我
-你好，我是程序员zouhuanli。是一个百度黑，TX黑，CSDN黑。
+你好，我是程序员zouhuanli。
 
 ## 版权声明
 
