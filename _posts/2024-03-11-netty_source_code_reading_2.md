@@ -573,6 +573,7 @@ ServerBootstrapAcceptor最主要的channelRead方法如下:
 
 其里面最核心的处理就是“ childGroup.register(child).addListener”，注册clientChannel到worker的EventLoop中，也是注册到EventLoop的Selector对象上。
 ServerBootstrapAcceptor是InBound的。
+
 具体流程是Boss的EventLoop注册ServerChannel之后，不断监听客户端连接，然后将accept的clientChannel交给ServerBootstrapAcceptor处理，由ServerBootstrapAcceptor将clientChannel
 注册到workerGroup的其中一个EventLoop中。
 
