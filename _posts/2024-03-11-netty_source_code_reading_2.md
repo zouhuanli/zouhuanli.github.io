@@ -2,7 +2,7 @@
 layout: post
 title: "Netty源码解读二：NettyServer的启动源码分析"
 date: 2024-03-11
-tags: [ Redis ]
+tags: [ Netty ]
 comments: true
 author: zouhuanli
 ---
@@ -310,15 +310,693 @@ bind方法具体如下：
         return regFuture;
     }
 ```
-具体调试一下这部分代码
+具体调试一下这部分代码:
+
+![serverChannel](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-11-netty_source_code_reading_2/serverChannel.png)
+
+可以看到这里的Channel是ServerChannel。
+
+继续来到init方法：
+```java
+ @Override
+    void init(Channel channel) {
+                            //初始化配置
+        setChannelOptions(channel, newOptionsArray(), logger);
+        setAttributes(channel, newAttributesArray());
+
+        ChannelPipeline p = channel.pipeline();
+
+        final EventLoopGroup currentChildGroup = childGroup;
+        final ChannelHandler currentChildHandler = childHandler;
+        final Entry<ChannelOption<?>, Object>[] currentChildOptions = newOptionsArray(childOptions);
+        final Entry<AttributeKey<?>, Object>[] currentChildAttrs = newAttributesArray(childAttrs);
+        final Collection<ChannelInitializerExtension> extensions = getInitializerExtensions();
+
+        p.addLast(new ChannelInitializer<Channel>() {
+            @Override
+            public void initChannel(final Channel ch) {
+                final ChannelPipeline pipeline = ch.pipeline();
+                ChannelHandler handler = config.handler();
+                if (handler != null) {
+                    pipeline.addLast(handler);
+                }
+
+                ch.eventLoop().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                                            //Acceptor的Handler
+                        pipeline.addLast(new ServerBootstrapAcceptor(
+                                ch, currentChildGroup, currentChildHandler, currentChildOptions, currentChildAttrs,
+                                extensions));
+                    }
+                });
+            }
+        });
+                                             //后置处理器
+        if (!extensions.isEmpty() && channel instanceof ServerChannel) {
+            ServerChannel serverChannel = (ServerChannel) channel;
+            for (ChannelInitializerExtension extension : extensions) {
+                try {
+                    extension.postInitializeServerListenerChannel(serverChannel);
+                } catch (Exception e) {
+                    logger.warn("Exception thrown from postInitializeServerListenerChannel", e);
+                }
+            }
+        }
+    }
+```
+
+这里最主要要关注Acceptor的Handler这个Handler对象。
+
+再返回initAndRegister方法：
+```java
+ ChannelFuture regFuture = config().group().register(channel);
+        if (regFuture.cause() != null) {
+            if (channel.isRegistered()) {
+                channel.close();
+            } else {
+                channel.unsafe().closeForcibly();
+            }
+        }
+```
+<strong>这个register方法是将channel注册EventLoop</strong>。
+
+跟踪执行流程，来到AbstractChannel#register方法：
+```java
+
+@Override
+public final void register(EventLoop eventLoop, final ChannelPromise promise) {
+    ObjectUtil.checkNotNull(eventLoop, "eventLoop");
+    if (isRegistered()) {
+        promise.setFailure(new IllegalStateException("registered to an event loop already"));
+        return;
+    }
+    if (!isCompatible(eventLoop)) {
+        promise.setFailure(
+                new IllegalStateException("incompatible event loop type: " + eventLoop.getClass().getName()));
+        return;
+    }
+
+    AbstractChannel.this.eventLoop = eventLoop;
+
+    if (eventLoop.inEventLoop()) {
+                          //注册Channel
+        register0(promise);
+    } else {
+        try {
+            eventLoop.execute(new Runnable() {
+                @Override
+                public void run() {
+                    register0(promise);
+                }
+            });
+        } catch (Throwable t) {
+            logger.warn(
+                    "Force-closing a channel whose registration task was not accepted by an event loop: {}",
+                    AbstractChannel.this, t);
+            closeForcibly();
+            closeFuture.setClosed();
+            safeSetFailure(promise, t);
+        }
+    }
+}
+
+private void register0(ChannelPromise promise) {
+    try {
+        // check if the channel is still open as it could be closed in the mean time when the register
+        // call was outside of the eventLoop
+        if (!promise.setUncancellable() || !ensureOpen(promise)) {
+            return;
+        }
+        boolean firstRegistration = neverRegistered;
+                        //注册Channel。Do方法
+        doRegister();
+        neverRegistered = false;
+        registered = true;
+
+        // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
+        // user may already fire events through the pipeline in the ChannelFutureListener.
+        pipeline.invokeHandlerAddedIfNeeded();
+
+        safeSetSuccess(promise);
+        pipeline.fireChannelRegistered();
+        // Only fire a channelActive if the channel has never been registered. This prevents firing
+        // multiple channel actives if the channel is deregistered and re-registered.
+        if (isActive()) {
+            if (firstRegistration) {
+                pipeline.fireChannelActive();
+            } else if (config().isAutoRead()) {
+                // This channel was registered before and autoRead() is set. This means we need to begin read
+                // again so that we process inbound data.
+                //
+                // See https://github.com/netty/netty/issues/4805
+                beginRead();
+            }
+        }
+    } catch (Throwable t) {
+        // Close the channel directly to avoid FD leak.
+        closeForcibly();
+        closeFuture.setClosed();
+        safeSetFailure(promise, t);
+    }
+}
+
+```
+来到这里AbstractNioChannel#doRegister方法
+```java
+ @Override
+    protected void doRegister() throws Exception {
+        boolean selected = false;
+        for (;;) {
+            try {
+                                    //注册Channel到Selector。Selector是eventLoop（一个线程）里面只有一个。
+                selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
+                return;
+            } catch (CancelledKeyException e) {
+                if (!selected) {
+                    // Force the Selector to select now as the "canceled" SelectionKey may still be
+                    // cached and not removed because no Select.select(..) operation was called yet.
+                    eventLoop().selectNow();
+                    selected = true;
+                } else {
+                    // We forced a select operation on the selector before but the SelectionKey is still cached
+                    // for whatever reason. JDK bug ?
+                    throw e;
+                }
+            }
+        }
+    }
+```
+
+这样最终SeverChannel注册到了bossGroup内的EventLoop(只有一个)的Selector上。
+
+再回到doBind0方法：
+```java
+ private static void doBind0(
+            final ChannelFuture regFuture, final Channel channel,
+            final SocketAddress localAddress, final ChannelPromise promise) {
+
+        // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
+        // the pipeline in its channelRegistered() implementation.
+        channel.eventLoop().execute(new Runnable() {
+            @Override
+            public void run() {
+                if (regFuture.isSuccess()) {
+                    channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+                } else {
+                    promise.setFailure(regFuture.cause());
+                }
+            }
+        });
+    }
+```
+这里其实就是对上面注册结果的回调，如果注册成功，则绑定pipeLine和ChannelHandlerContext。
+
+有一点注意点就是：
+```java
+ ChannelFuture regFuture = config().group().register(channel);
+
+```
+这里因为bossGroup只有一个线程就只能选择一个EventLoop注册。如果是WorkerGroup因为有多个，会调用下面方法选择一个EventLoop注册上去：
+```java
+@Override
+    public ChannelFuture register(Channel channel) {
+        return next().register(channel);
+    }
+```
+
+到这里bind方法和引导类就解读完成。
+
+下面简单解读ServerBootstrapAcceptor的源码。
 
 # 二.ServerBootstrapAcceptor流程
 
-# 三、Boss的EventLoop处理流程
+ServerBootstrapAcceptor最主要的channelRead方法如下:
 
-# 四、Worker的EventLoop处理流程
+```java
+ @Override
+        @SuppressWarnings("unchecked")
+        public void channelRead(ChannelHandlerContext ctx, Object msg) {
+            final Channel child = (Channel) msg;
 
-# 五. 参考资料
+            child.pipeline().addLast(childHandler);
+
+            setChannelOptions(child, childOptions, logger);
+            setAttributes(child, childAttrs);
+
+            if (!extensions.isEmpty()) {
+                for (ChannelInitializerExtension extension : extensions) {
+                    try {
+                        extension.postInitializeServerChildChannel(child);
+                    } catch (Exception e) {
+                        logger.warn("Exception thrown from postInitializeServerChildChannel", e);
+                    }
+                }
+            }
+
+            try {
+                
+                //注册clientChannel到worker的EventLoop中
+                childGroup.register(child).addListener(new ChannelFutureListener() {
+                    @Override
+                    public void operationComplete(ChannelFuture future) throws Exception {
+                        if (!future.isSuccess()) {
+                            forceClose(child, future.cause());
+                        }
+                    }
+                });
+            } catch (Throwable t) {
+                forceClose(child, t);
+            }
+        }
+```
+
+其里面最核心的处理就是“ childGroup.register(child).addListener”，注册clientChannel到worker的EventLoop中，也是注册到EventLoop的Selector对象上。
+ServerBootstrapAcceptor是InBound的。
+具体流程是Boss的EventLoop注册ServerChannel之后，不断监听客户端连接，然后将accept的clientChannel交给ServerBootstrapAcceptor处理，由ServerBootstrapAcceptor将clientChannel
+注册到workerGroup的其中一个EventLoop中。
+
+Boss的EventLoop处理流程具体如下。
+
+# 三.Boss的EventLoop处理流程
+
+首先注意Boss绑定的channel是severChannel.
+
+依旧进入EventLoop的run方法:
+```java
+   int selectNow() throws IOException {
+        return selector.selectNow();
+    }
+
+```
+这里获得事件.
+
+然后处理事件,boss只处理Accept事件.
+```java
+ private void processSelectedKeys() {
+        if (selectedKeys != null) {
+            processSelectedKeysOptimized();
+        } else {
+            processSelectedKeysPlain(selector.selectedKeys());
+        }
+    }
+```
+再进入处理具体事件的代码:
+```java
+  private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
+        final AbstractNioChannel.NioUnsafe unsafe = ch.unsafe();
+        if (!k.isValid()) {
+            final EventLoop eventLoop;
+            try {
+                eventLoop = ch.eventLoop();
+            } catch (Throwable ignored) {
+                // If the channel implementation throws an exception because there is no event loop, we ignore this
+                // because we are only trying to determine if ch is registered to this event loop and thus has authority
+                // to close ch.
+                return;
+            }
+            // Only close ch if ch is still registered to this EventLoop. ch could have deregistered from the event loop
+            // and thus the SelectionKey could be cancelled as part of the deregistration process, but the channel is
+            // still healthy and should not be closed.
+            // See https://github.com/netty/netty/issues/5125
+            if (eventLoop == this) {
+                // close the channel if the key is not valid anymore
+                unsafe.close(unsafe.voidPromise());
+            }
+            return;
+        }
+
+        try {
+            int readyOps = k.readyOps();
+            // We first need to call finishConnect() before try to trigger a read(...) or write(...) as otherwise
+            // the NIO JDK channel implementation may throw a NotYetConnectedException.
+            if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+                // remove OP_CONNECT as otherwise Selector.select(..) will always return without blocking
+                // See https://github.com/netty/netty/issues/924
+                int ops = k.interestOps();
+                ops &= ~SelectionKey.OP_CONNECT;
+                k.interestOps(ops);
+
+                unsafe.finishConnect();
+            }
+
+            // Process OP_WRITE first as we may be able to write some queued buffers and so free memory.
+            if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                // Call forceFlush which will also take care of clear the OP_WRITE once there is nothing left to write
+               unsafe.forceFlush();
+            }
+
+            // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
+            // to a spin loop
+            if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                unsafe.read();
+            }
+        } catch (CancelledKeyException ignored) {
+            unsafe.close(unsafe.voidPromise());
+        }
+    }
+```
+
+这里是Accept事件的处理:
+
+```java
+ if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                unsafe.read();
+            }
+```
+
+继续来到NioMessageUnsafe#read方法:
+
+```java
+ public void read() {
+            assert eventLoop().inEventLoop();
+            final ChannelConfig config = config();
+            final ChannelPipeline pipeline = pipeline();
+            final RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();
+            allocHandle.reset(config);
+
+            boolean closed = false;
+            Throwable exception = null;
+            try {
+                try {
+                    do {
+                                        //执行读取消息操作
+                        int localRead = doReadMessages(readBuf);
+                        if (localRead == 0) {
+                            break;
+                        }
+                        if (localRead < 0) {
+                            closed = true;
+                            break;
+                        }
+
+                        allocHandle.incMessagesRead(localRead);
+                    } while (continueReading(allocHandle));
+                } catch (Throwable t) {
+                    exception = t;
+                }
+
+                int size = readBuf.size();
+                for (int i = 0; i < size; i ++) {
+                    readPending = false;
+                                        //触发channel的read事件的回调/监听器
+                    pipeline.fireChannelRead(readBuf.get(i));
+                }
+                readBuf.clear();
+                allocHandle.readComplete();
+                pipeline.fireChannelReadComplete();
+
+                if (exception != null) {
+                    closed = closeOnReadError(exception);
+
+                    pipeline.fireExceptionCaught(exception);
+                }
+
+                if (closed) {
+                    inputShutdown = true;
+                    if (isOpen()) {
+                        close(voidPromise());
+                    }
+                }
+            } finally {
+                // Check if there is a readPending which was not processed yet.
+                // This could be for two reasons:
+                // * The user called Channel.read() or ChannelHandlerContext.read() in channelRead(...) method
+                // * The user called Channel.read() or ChannelHandlerContext.read() in channelReadComplete(...) method
+                //
+                // See https://github.com/netty/netty/issues/2254
+                if (!readPending && !config.isAutoRead()) {
+                    removeReadOp();
+                }
+            }
+        }
+    }
+```
+
+然后,再来到NioServerSocketChannel:
+
+```java
+  @Override
+    protected int doReadMessages(List<Object> buf) throws Exception {
+        SocketChannel ch = SocketUtils.accept(javaChannel());
+
+        try {
+            if (ch != null) {
+                buf.add(new NioSocketChannel(this, ch));
+                return 1;
+            }
+        } catch (Throwable t) {
+            logger.warn("Failed to create a new channel from an accepted socket.", t);
+
+            try {
+                ch.close();
+            } catch (Throwable t2) {
+                logger.warn("Failed to close a socket.", t2);
+            }
+        }
+
+        return 0;
+    }
+```
+
+这里就是调用javaChannel(ServerChannel)的accept方法获取客户端连接clientChannel,然后包装为netty的NioSocketChannel.
+
+这里获取clientChannel之后,再进入这行代码,触发channelRead操作的回调:
+
+```java
+ pipeline.fireChannelRead(readBuf.get(i));
+```
+
+Boss的pipeline如下:
+
+![boss-pipeline](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-11-netty_source_code_reading_2/boss-pipeline.png)
+
+所以这里会触发回调ServerBootstrapAcceptor的channelRead方法,也就是将clientChannel注册到WorkerGroup的一个EventLoop中.
+这行代码注册clientChannel到worker的EventLoop:"childGroup.register(child).addListener(new ChannelFutureListener()"． 调试信息如下:
+
+![clientChannel](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-11-netty_source_code_reading_2/clientChannel.png)
+
+其内部的pipeline包含EchoServerHandler.
+
+到这里,客户端连接clientChannel就交付给WorkerGroup的一个EventLoop去处理.
+
+
+# 四.Worker的EventLoop处理流程
+
+Worker的EventLoop处理流程和Boss的一样的,区别是处理的是clientChannel,会按照IO事件具体调用对应ChannelHandler.
+
+这里直接来到processSelectedKey方法:
+
+```java
+ private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
+        final AbstractNioChannel.NioUnsafe unsafe = ch.unsafe();
+        if (!k.isValid()) {
+            final EventLoop eventLoop;
+            try {
+                eventLoop = ch.eventLoop();
+            } catch (Throwable ignored) {
+                // If the channel implementation throws an exception because there is no event loop, we ignore this
+                // because we are only trying to determine if ch is registered to this event loop and thus has authority
+                // to close ch.
+                return;
+            }
+            // Only close ch if ch is still registered to this EventLoop. ch could have deregistered from the event loop
+            // and thus the SelectionKey could be cancelled as part of the deregistration process, but the channel is
+            // still healthy and should not be closed.
+            // See https://github.com/netty/netty/issues/5125
+            if (eventLoop == this) {
+                // close the channel if the key is not valid anymore
+                unsafe.close(unsafe.voidPromise());
+            }
+            return;
+        }
+
+        try {
+            int readyOps = k.readyOps();
+            // We first need to call finishConnect() before try to trigger a read(...) or write(...) as otherwise
+            // the NIO JDK channel implementation may throw a NotYetConnectedException.
+            if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+                // remove OP_CONNECT as otherwise Selector.select(..) will always return without blocking
+                // See https://github.com/netty/netty/issues/924
+                int ops = k.interestOps();
+                ops &= ~SelectionKey.OP_CONNECT;
+                k.interestOps(ops);
+
+                unsafe.finishConnect();
+            }
+
+            // Process OP_WRITE first as we may be able to write some queued buffers and so free memory.
+            if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                // Call forceFlush which will also take care of clear the OP_WRITE once there is nothing left to write
+               unsafe.forceFlush();
+            }
+
+            // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
+            // to a spin loop
+            if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                unsafe.read();
+            }
+        } catch (CancelledKeyException ignored) {
+            unsafe.close(unsafe.voidPromise());
+        }
+    }
+
+```
+
+举例,这里依旧是进入READ事件的处理:
+
+```java
+   // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
+            // to a spin loop
+            if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                unsafe.read();
+            }
+```
+
+只不过,这个不是调用ServerChannel的read方法,而是调用clientChannel的read方法,AbstractNioByteChannel的read方法具体如下:
+
+```java
+     @Override
+public final void read() {
+    final ChannelConfig config = config();
+    if (shouldBreakReadReady(config)) {
+        clearReadPending();
+        return;
+    }
+    final ChannelPipeline pipeline = pipeline();
+    final ByteBufAllocator allocator = config.getAllocator();
+    final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
+    allocHandle.reset(config);
+
+    ByteBuf byteBuf = null;
+    boolean close = false;
+    try {
+        do {
+                            //分配ByteBuf,clientChannel读取
+            byteBuf = allocHandle.allocate(allocator);
+            allocHandle.lastBytesRead(doReadBytes(byteBuf));
+            if (allocHandle.lastBytesRead() <= 0) {
+                // nothing was read. release the buffer.
+                byteBuf.release();
+                byteBuf = null;
+                close = allocHandle.lastBytesRead() < 0;
+                if (close) {
+                    // There is nothing left to read as we received an EOF.
+                    readPending = false;
+                }
+                break;
+            }
+
+            allocHandle.incMessagesRead(1);
+            readPending = false;
+            pipeline.fireChannelRead(byteBuf);
+            byteBuf = null;
+        } while (allocHandle.continueReading());
+
+        allocHandle.readComplete();
+                            //触发读操作事件的回调,也就是ChannelHandler的channelRead方法
+        pipeline.fireChannelReadComplete();
+
+        if (close) {
+            closeOnRead(pipeline);
+        }
+    } catch (Throwable t) {
+        handleReadException(pipeline, byteBuf, t, close, allocHandle);
+    } finally {
+        // Check if there is a readPending which was not processed yet.
+        // This could be for two reasons:
+        // * The user called Channel.read() or ChannelHandlerContext.read() in channelRead(...) method
+        // * The user called Channel.read() or ChannelHandlerContext.read() in channelReadComplete(...) method
+        //
+        // See https://github.com/netty/netty/issues/2254
+        if (!readPending && !config.isAutoRead()) {
+            removeReadOp();
+        }
+    }
+}
+
+```
+![clientChannel-read](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-11-netty_source_code_reading_2/clientChannel-read.png)
+
+
+触发ChannelRead回调的源码如下:
+
+```java
+
+    static void invokeChannelRead(final AbstractChannelHandlerContext next, Object msg) {
+        final Object m = next.pipeline.touch(ObjectUtil.checkNotNull(msg, "msg"), next);
+        EventExecutor executor = next.executor();
+        if (executor.inEventLoop()) {
+            next.invokeChannelRead(m);
+        } else {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    next.invokeChannelRead(m);
+                }
+            });
+        }
+    }
+
+    private void invokeChannelRead(Object msg) {
+        if (invokeHandler()) {
+            try {
+                // DON'T CHANGE
+                // Duplex handlers implements both out/in interfaces causing a scalability issue
+                // see https://bugs.openjdk.org/browse/JDK-8180450
+                final ChannelHandler handler = handler();
+                final DefaultChannelPipeline.HeadContext headContext = pipeline.head;
+                if (handler == headContext) {
+                    headContext.channelRead(this, msg);
+                } else if (handler instanceof ChannelDuplexHandler) {
+                    ((ChannelDuplexHandler) handler).channelRead(this, msg);
+                } else {
+                    ((ChannelInboundHandler) handler).channelRead(this, msg);
+                }
+            } catch (Throwable t) {
+                invokeExceptionCaught(t);
+            }
+        } else {
+            fireChannelRead(msg);
+        }
+    }
+```
+
+最后就调用我们具体的ChannelHandler,要注意的是Pipeline的调用是链式的,会调用多个ChannelHandler.
+
+![BizHandler](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-11-netty_source_code_reading_2/BizHandler.png)
+
+到这里,一个客户端请求到我们的业务Handler的流程就基本清晰了.
+
+下面对Boss和worker的EventLoop做下总结.
+
+# 五. 简单总结
+
+## 1.BossGroup总结
+
+1. Boss的EventLoop主要是监听Accept事件,负责不断accept客户端连接.
+2. Boss的EventLoop的Selector上注册的是ServerChannel,Boss的EventLoop不断accept监听客户端连接channel,再ServerChannelAcceptor将客户端Channel注册到Worker(s)的一个EventLoop中.
+
+具体如下图:
+
+TODO ~~~
+
+## WorkerGroup总结
+
+worker的EventLoop注册的是clientChannel,不断轮询clientChannel的事件,并处理事件,处理事件时调用Pipeline的链式的ChannelHandler去做具体的处理.
+
+总结如下图:
+
+TOD~~~~
+
+
+
+重点要区分Boss是监听serverChannel,不断获取客户端连接clientChannel,并将clientChannel交给一个Worker的EventLoop去处理.
+
+也就是说Boss负责客户端连接事件处理,Worker负责客户端连接的读写事件和具体业务处理.
+
+
+# 六. 参考资料
 
 1. Netty源码(版本4.1)
 
