@@ -19,6 +19,19 @@ boss的EventLop只处理Accept事件，然后将channel绑定到一个worker中�
 
 这里直接以EchoServer作为入口分析。其实鉴于Netty对上层的良好透明性，大多时候上层业务基本只要定制ChannelHandler即可，服务器引导类基本相同的。分析EventLoop按默认的NioEventLoop，EpollEventLoop同理的。
 
+本文目录：
+
+- [一.Bootstrap流程](#一bootstrap流程)
+  - [1.引导类](#1引导类)
+  - [2.handler类](#2handler类)
+  - [3.bind流程](#3bind流程)
+- [二.ServerBootstrapAcceptor流程](#二serverbootstrapacceptor流程)
+- [三.Boss的EventLoop处理流程](#三boss的eventloop处理流程)
+- [四.Worker的EventLoop处理流程](#四worker的eventloop处理流程)
+- [五. 简单总结](#五-简单总结)
+  - [1.BossGroup总结](#1bossgroup总结)
+  - [2.WorkerGroup总结](#2workergroup总结)
+- [六. 参考资料](#六-参考资料)
 
 # 一.Bootstrap流程
 ## 1.引导类
@@ -980,15 +993,16 @@ public final void read() {
 
 具体如下图:
 
-TODO ~~~
+![BossEventLoop-0](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-11-netty_source_code_reading_2/BossEventLoop-0.png)
 
-## WorkerGroup总结
+
+## 2.WorkerGroup总结
 
 worker的EventLoop注册的是clientChannel,不断轮询clientChannel的事件,并处理事件,处理事件时调用Pipeline的链式的ChannelHandler去做具体的处理.
 
 总结如下图:
 
-TOD~~~~
+![WorkerEventLoop-0](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-11-netty_source_code_reading_2/WorkerEventLoop-0.png)
 
 
 
