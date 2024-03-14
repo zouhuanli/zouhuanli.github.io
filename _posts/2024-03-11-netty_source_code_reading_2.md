@@ -1011,6 +1011,7 @@ worker的EventLoop注册的是clientChannel,不断轮询clientChannel的事件,�
 也就是说Boss负责客户端连接事件处理,Worker负责客户端连接的读写事件和具体业务处理.
 
 
+
 # 六. 参考资料
 
 1. Netty源码(版本4.1)
