@@ -17,12 +17,11 @@ Spring WebFlux是不同于SpringMVC+tomcat的Web框架，完全异步和非阻�
 啥叫响应式？
 
 我们熟悉的SpringMVC+tomcat的Web框架本质上还是Tomcat为每个client连接分配一个handler，handler线程处理一个请求/连接，这是一个请求/连接一个线程的模型。
-
 其内部经过DispatcherServlet调用到具体的Controller，再返回给客户端结果。这个模式编程简单，理解流程也好理解，但是面对大量客户端请求连接时，Tomcat的线程池会限制系统的吞吐量。而且Handler线程阻塞时候，整个线程无法处理任何任务。
 
-响应式编程 (reactive programming) 是一种基于 数据流 (data stream) 和 变化传递 (propagation of change) 的 声明式 (declarative) 的编程范式。响应式是基于事件驱动，
+响应式编程 (reactive programming) 是一种基于 数据流 (data stream) 和 变化传递 (propagation of change) 的 声明式 (declarative) 的编程范式。
 
-响应式组件的交互式基于流来传递事件，生产者事件推送给消费者。类似MQ的模式。
+响应式是基于事件驱动，响应式组件的交互式基于流来传递事件，生产者事件推送给消费者。类似MQ的模式。
 
 Spring WebFlux是基于Reactive响应式编程的，不是Servlet规范。
 
