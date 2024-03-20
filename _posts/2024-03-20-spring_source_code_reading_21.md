@@ -96,7 +96,7 @@ public class GatewayStarter {
 
 ```
 
-首先参考[SpringBoot源码阅读二:SpringBoot启动流程](https://zouhuanli.github.io/springboot_source_code_reading_2/),我们进入deduceFromClasspath方法：
+首先参考这篇文章[SpringBoot源码阅读二:SpringBoot启动流程](https://zouhuanli.github.io/springboot_source_code_reading_2/),我们进入deduceFromClasspath方法：
 
 ```java
 static WebApplicationType deduceFromClasspath() {
