@@ -1,309 +1,22 @@
 ---
 layout: post
-title: "Spring源码阅读二十一:Spring WebFlux启动流程"
-date: 2024-03-20
+title: "Spring源码阅读二十二:Spring WebFlux请求处理流程"
+date: 2024-03-24
 tags: [ spring ]
 comments: true
 author: zouhuanli
 ---
 
-本文是Spring源码阅读计划的第二十一篇文章,本文简单介绍Spring WebFlux以及Reactive响应式编程。
+本文是Spring源码阅读计划的第二十二篇文章，本文在上一篇文章的基础上解读Spring WebFlux的请求处理流程。
 
-Spring WebFlux是不同于SpringMVC+tomcat的Web框架，完全异步和非阻塞，主要体现在：Reactive响应式编程+NettyServer。
+在上一篇文章中我们分析到WebFlux或者说Gateway底层使用Netty接受客户端请求连接，MainReactor是ServerChannel不断accept获得客户端连接，再将客户端连接注册到SubReactor，由SubReactor负责具体客户端连接Chanel的整个IO事件处理。
 
-
-# 一、响应式
-
-啥叫响应式？
-
-我们熟悉的SpringMVC+tomcat的Web框架本质上还是Tomcat为每个client连接分配一个handler，handler线程处理一个请求/连接，这是一个请求/连接一个线程的模型。
-其内部经过DispatcherServlet调用到具体的Controller，再返回给客户端结果。这个模式编程简单，理解流程也好理解，但是面对大量客户端请求连接时，Tomcat的线程池会限制系统的吞吐量。而且Handler线程阻塞时候，整个线程无法处理任何任务。
-
-响应式编程 (reactive programming) 是一种基于 数据流 (data stream) 和 变化传递 (propagation of change) 的 声明式 (declarative) 的编程范式。
-
-响应式是基于事件驱动，响应式组件的交互式基于流来传递事件，生产者事件推送给消费者。类似MQ的模式。
-
-Spring WebFlux是基于Reactive响应式编程的，不是Servlet规范。
-
-Spring WebFlux的Reactor响应式编程相关一些核心类：
-
-1. Mono：代表0-1个元素的发布者(Publisher)
-
-2. Flux: 代表0-N个元素的发布者(Publisher)
-
-3. Scheduler:调度器，线程或者线程池。
-
-Mono和Flux的操作都类似于Java8 Stream那样的流式操作，可以组合操作。事件的处理是基于回调，非阻塞的，如Subscriber接口定义如下：
-```java
-public interface Subscriber<T> {
-    /**
-     * Invoked after calling {@link Publisher#subscribe(Subscriber)}.
-     * <p>
-     * No data will start flowing until {@link Subscription#request(long)} is invoked.
-     * <p>
-     * It is the responsibility of this {@link Subscriber} instance to call {@link Subscription#request(long)} whenever more data is wanted.
-     * <p>
-     * The {@link Publisher} will send notifications only in response to {@link Subscription#request(long)}.
-     * 
-     * @param s
-     *            {@link Subscription} that allows requesting data via {@link Subscription#request(long)}
-     */
-    public void onSubscribe(Subscription s);
-
-    /**
-     * Data notification sent by the {@link Publisher} in response to requests to {@link Subscription#request(long)}.
-     * 
-     * @param t the element signaled
-     */
-    public void onNext(T t);
-
-    /**
-     * Failed terminal state.
-     * <p>
-     * No further events will be sent even if {@link Subscription#request(long)} is invoked again.
-     *
-     * @param t the throwable signaled
-     */
-    public void onError(Throwable t);
-
-    /**
-     * Successful terminal state.
-     * <p>
-     * No further events will be sent even if {@link Subscription#request(long)} is invoked again.
-     */
-    public void onComplete();
-}
-
-```
-
-整体来说Reactive是类似于MQ，生产者和消费者之间通过发布/接受消息/事件来交互，而且是push推送式的，避免了poll轮询的消耗。此外组件之间解耦合，比命令式更难分析调用链路和全局上下文，但可以比较容易实现可伸缩性。
-
-下面简单分析一下WebFlux的启动流程。Spring Cloud Gateway是基于WebFlux的。
-
-# 二、Spring WebFlux启动流程
-
-## 2.1 启动和创建WebServer
-
-我们以一个简单的gateway工程为例：
-```java
-@SpringBootApplication
-@EnableDiscoveryClient
-public class GatewayStarter {
-    public static void main(String[] args){
-        SpringApplication.run(GatewayStarter.class, args);
-    }
-}
-
-```
-
-首先参考这篇文章[SpringBoot源码阅读二:SpringBoot启动流程](https://zouhuanli.github.io/springboot_source_code_reading_2/),我们进入deduceFromClasspath方法：
-
-```java
-static WebApplicationType deduceFromClasspath() {
-                            //
-		if (ClassUtils.isPresent(WEBFLUX_INDICATOR_CLASS, null) && !ClassUtils.isPresent(WEBMVC_INDICATOR_CLASS, null)
-				&& !ClassUtils.isPresent(JERSEY_INDICATOR_CLASS, null)) {
-			return WebApplicationType.REACTIVE;
-		}
-		for (String className : SERVLET_INDICATOR_CLASSES) {
-			if (!ClassUtils.isPresent(className, null)) {
-				return WebApplicationType.NONE;
-			}
-		}
-		return WebApplicationType.SERVLET;
-	}
-```
-这里的gateway工程导入了DispatcherHandler类，因此这里的Web类型是WebApplicationType.REACTIVE。
-
-然后继续跟踪执行流程：
-```java
-	/**
-	 * Strategy method used to create the {@link ApplicationContext}. By default this
-	 * method will respect any explicitly set application context or application context
-	 * class before falling back to a suitable default.
-	 * @return the application context (not yet refreshed)
-	 * @see #setApplicationContextClass(Class)
-	 */
-	protected ConfigurableApplicationContext createApplicationContext() {
-		Class<?> contextClass = this.applicationContextClass;
-		if (contextClass == null) {
-			try {
-				switch (this.webApplicationType) {
-				case SERVLET:
-					contextClass = Class.forName(DEFAULT_SERVLET_WEB_CONTEXT_CLASS);
-					break;
-				case REACTIVE:
-					contextClass = Class.forName(DEFAULT_REACTIVE_WEB_CONTEXT_CLASS);
-					break;
-				default:
-					contextClass = Class.forName(DEFAULT_CONTEXT_CLASS);
-				}
-			}
-			catch (ClassNotFoundException ex) {
-				throw new IllegalStateException(
-						"Unable create a default ApplicationContext, please specify an ApplicationContextClass", ex);
-			}
-		}
-		return (ConfigurableApplicationContext) BeanUtils.instantiateClass(contextClass);
-	}
-```
-此次创建的ApplicationContext是AnnotationConfigReactiveWebServerApplicationContext。
-
-然后就是ApplicationContext的refresh方法，加载BeanDefinition，创建Bean等流程。
-
-继续跟踪run方法,来到ReactiveWebServerApplicationContext#onfresh方法，如下：
-
-```java
-	@Override
-	protected void onRefresh() {
-		super.onRefresh();
-		try {
-			createWebServer();
-		}
-		catch (Throwable ex) {
-			throw new ApplicationContextException("Unable to start reactive web server", ex);
-		}
-	}
-
-	private void createWebServer() {
-		ServerManager serverManager = this.serverManager;
-		if (serverManager == null) {
-			String webServerFactoryBeanName = getWebServerFactoryBeanName();
-			ReactiveWebServerFactory webServerFactory = getWebServerFactory(webServerFactoryBeanName);
-			boolean lazyInit = getBeanFactory().getBeanDefinition(webServerFactoryBeanName).isLazyInit();
-			this.serverManager = ServerManager.get(webServerFactory, lazyInit);
-		}
-		initPropertySources();
-	}
-```
-
-这里创建的WebServer不是内嵌的Tomcat了。跟踪ReactiveWebServerFactory#getWebServer方法，gateway默认创建的WebServer是NettyWebServer:
-```java
-@Override
-	public WebServer getWebServer(HttpHandler httpHandler) {
-		HttpServer httpServer = createHttpServer();
-		ReactorHttpHandlerAdapter handlerAdapter = new ReactorHttpHandlerAdapter(httpHandler);
-		NettyWebServer webServer = new NettyWebServer(httpServer, handlerAdapter, this.lifecycleTimeout);
-		webServer.setRouteProviders(this.routeProviders);
-		return webServer;
-	}
-```
-因此Gateway项目应该是使用Netty接受客户端请求连接。
-
-我们在回到run方法流程，来到ReactiveWebServerApplicationContext#finishRefresh方法：
-```java
-@Override
-	protected void finishRefresh() {
-		super.finishRefresh();
-		WebServer webServer = startReactiveWebServer();
-		if (webServer != null) {
-			publishEvent(new ReactiveWebServerInitializedEvent(webServer, this));
-		}
-	}
-```
-上面的onRefresh是创建NettyWebServer，这里的finishRefresh则是启动NettyWebServer。
-
-到这里，基本可以确定WebFlux或者gateway底层本质还是使用Netty来接受客户端请求和处理请求。
-
-## 2.1 启动WebSever
-
-我们进入startReactiveWebServer方法：
-```java
-private DisposableServer startHttpServer() {
-		HttpServer server = this.httpServer;
-		if (this.routeProviders.isEmpty()) {
-			server = server.handle(this.handlerAdapter);
-		}
-		else {
-			server = server.route(this::applyRouteProviders);
-		}
-		if (this.lifecycleTimeout != null) {
-			return server.bindNow(this.lifecycleTimeout);
-		}
-		return server.bindNow();
-	}
-```
-
-继续追踪，来到HttpServer#bindNow方法：
-```java
-public final DisposableServer bindNow(Duration timeout) {
-    Objects.requireNonNull(timeout, "timeout");
-    try {
-        return Objects.requireNonNull(bind().block(timeout), "aborted");
-    }
-    catch (IllegalStateException e) {
-        if (e.getMessage().contains("blocking read")) {
-            throw new IllegalStateException("HttpServer couldn't be started within "
-                    + timeout.toMillis() + "ms");
-        }
-        throw e;
-    }
-}
-```
-再来到HttpServerBind的bind绑定方法：
-```java
-	@Override
-	@SuppressWarnings("deprecation")
-	public Mono<? extends DisposableServer> bind(TcpServer delegate) {
-		return delegate.bootstrap(this)
-		               .bind()
-		               .map(CLEANUP_GLOBAL_RESOURCE);
-	}
-```
-这里执行委派类TcpServer的绑定方法。
-
-![HttpServerBind](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-20-spring_source_code_reading_21/HttpServerBind.png)
+对上层开发这，Netty暴露的主要API就是ChannelHandler。本文也会从ChannelHandler作为分析起点分析整个请求的处理流程。
 
 
-再进入TcpServer的bind方法。
-```java
+# 一、NettyWebServer和ChannelHandler
 
-	/**
-	 * Binds the {@link TcpServer} and returns a {@link Mono} of {@link DisposableServer}. If
-	 * {@link Mono} is cancelled, the underlying binding will be aborted. Once the {@link
-	 * DisposableServer} has been emitted and is not necessary anymore, disposing the main server
-	 * loop must be done by the user via {@link DisposableServer#dispose()}.
-	 *
-	 * If updateConfiguration phase fails, a {@link Mono#error(Throwable)} will be returned;
-	 *
-	 * @return a {@link Mono} of {@link DisposableServer}
-	 */
-	public final Mono<? extends DisposableServer> bind() {
-		ServerBootstrap b;
-		try{
-			b = configure();
-		}
-		catch (Throwable t){
-			Exceptions.throwIfJvmFatal(t);
-			return Mono.error(t);
-		}
-		return bind(b);
-	}
-```
-
-这里就是使用Netty的ServerBootstrap创建MainReactor和SubReactor了。
-
-继续来到TcpServerRunOn#configure方法
-```java
-
-	@SuppressWarnings("deprecation")
-	static void configure(ServerBootstrap b,
-			boolean preferNative,
-			LoopResources resources) {
-
-		EventLoopGroup selectorGroup = resources.onServerSelect(preferNative);
-		EventLoopGroup elg = resources.onServer(preferNative);
-
-		b.group(selectorGroup, elg)
-		 .channel(resources.onServerChannel(elg));
-	}
-```
-这里就是MainEventLoop和WorkerEventLoop，默认的Netty的线程数是mainReactor（Main）是1线程，subReactor(Worker)是逻辑核心数量.
-
-到这里Netty的MainEventLoop和WorkerEventLoop就创建完成，下面继续来到bind方法。
-
-进入TcpServerBind的bind方法：
-
+上一篇文章的NettyServer的Bind方法如下：
 ```java
 @Override
 	public Mono<? extends DisposableServer> bind(ServerBootstrap b) {
@@ -339,14 +52,485 @@ public final DisposableServer bindNow(Duration timeout) {
 			sink.onCancel(disposableServer);
 		});
 	}
-
 ```
 
-这行代码“ ChannelFuture f = bootstrap.bind();”就是Netty的ServerBootstrap的绑定方法。
+我们注意这行代码“BootstrapHandlers.finalizeHandler(bootstrap, ops, new ChildObserver(childObs));” 里面是添加了BootstrapInitializerHandler这样的初始的ChannelHandler。我们进入其方法。
+```java
+	@ChannelHandler.Sharable
+	static final class BootstrapInitializerHandler extends ChannelInitializer<Channel> {
+                                //ChannelPipeline
+		final BootstrapPipelineHandler pipeline;
+                                //监听器
+		final ConnectionObserver       listener;
+		final ChannelOperations.OnSetup opsFactory;
 
-虽然Mono这些reactive范式的源码没有命令式那样易于分析，整体上底层还是使用Netty作为WebSever，使用Netty接受客户端请求连接和处理请求连接。
+		BootstrapInitializerHandler(@Nullable BootstrapPipelineHandler pipeline,
+				ChannelOperations.OnSetup opsFactory,
+				ConnectionObserver listener) {
+			this.pipeline = pipeline;
+			this.opsFactory = opsFactory;
+			this.listener = listener;
+		}
+
+                            //注意这个方法
+		@Override
+		protected void initChannel(Channel ch) {
+			if (pipeline != null) {
+				for (PipelineConfiguration pipelineConfiguration : pipeline) {
+					pipelineConfiguration.consumer.accept(listener, ch);
+				}
+			}
+
+			ChannelOperations.addReactiveBridge(ch, opsFactory, listener);
+
+			if (log.isDebugEnabled()) {
+				log.debug(format(ch, "Initialized pipeline {}"), ch.pipeline().toString());
+			}
+		}
+
+		@Override
+		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+			ctx.fireExceptionCaught(cause);
+		}
+
+		@Override
+		public void channelInactive(ChannelHandlerContext ctx) {
+			ctx.fireChannelInactive();
+		}
+	}
+```
+
+这里重点看这个initChannel方法，特别是这行“ChannelOperations.addReactiveBridge(ch, opsFactory, listener);”
+```java
+
+	/**
+	 * Add {@link NettyPipeline#ReactiveBridge} handler at the end of {@link Channel}
+	 * pipeline. The bridge will buffer outgoing write and pass along incoming read to
+	 * the current {@link ChannelOperations#get(Channel)}.
+	 *
+	 * @param ch the channel to bridge
+	 * @param opsFactory the operations factory to invoke on channel active
+	 * @param listener the listener to forward connection events to
+	 */
+	public static void addReactiveBridge(Channel ch, OnSetup opsFactory, ConnectionObserver listener) {
+		ch.pipeline()
+		  .addLast(NettyPipeline.ReactiveBridge, new ChannelOperationsHandler(opsFactory, listener));
+	}
+```
+这里在pipeline的尾部添加ChannelOperationsHandler，ChannelOperationsHandler里面包含了一个监听器。因为ChannelOperationsHandler是InBound的，所以是比管道里面的其他ChannelHandler最后之后才执行的。
+
+然后这里需要特别注意的是监听器的类型，和其内部的handler。其内部的Handler处理请求，经过层层转派最终到DispatcherHandler去处理。
+
+![BootstrapInitializerHandler](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-24-spring_source_code_reading_22/BootstrapInitializerHandler.png)
 
 
-# 三、参考材料
+通过上面的源码分析，我们知道了请求会转发给listener监听器去处理。我们继续深入。
+
+
+# 二、ConnectionObserver连接监听器
+
+监听器主要是监听检测了连接的状态并进行相应的回调。
+```java
+@FunctionalInterface
+public interface ConnectionObserver {
+
+	/**
+	 * Return a noop connection listener
+	 *
+	 * @return a noop connection listener
+	 */
+	static ConnectionObserver emptyListener(){
+		return ReactorNetty.NOOP_LISTENER;
+	}
+
+	/**
+	 * Connection listener {@link Context}
+	 *
+	 * @return current {@link Context} or {@link Context#empty()}
+	 */
+	default Context currentContext(){
+		return Context.empty();
+	}
+
+	/**
+	 * React on connection fatal error, will request a disconnecting state
+	 * change by default. It should only catch exceptions that can't be consumed by a
+	 * {@link NettyInbound#receive} subscriber.
+	 *
+	 * @param connection the remote connection
+	 * @param error the failing cause
+	 */
+	default void onUncaughtException(Connection connection, Throwable error) {
+		onStateChange(connection, State.DISCONNECTING);
+	}
+
+	/**
+	 * React on connection state change (e.g. http request or response)
+	 *
+	 * @param connection the connection reference
+	 * @param newState the new State
+	 */
+	void onStateChange(Connection connection, State newState);
+
+	/**
+	 * Chain together another {@link ConnectionObserver}
+	 *
+	 * @param other the next {@link ConnectionObserver}
+	 *
+	 * @return a new composite {@link ConnectionObserver}
+	 */
+	default ConnectionObserver then(ConnectionObserver other) {
+		return ReactorNetty.compositeConnectionObserver(this, other);
+	}
+
+	/**
+	 * A marker interface for various state signals used in {@link #onStateChange(Connection, State)}
+	 * <p>
+	 *     Specific protocol might implement more state type for instance
+	 *     request/response lifecycle.
+	 */
+	interface State {
+
+		/**
+		 * Propagated when a connection has been established and is available
+		 */
+		State CONNECTED = ReactorNetty.CONNECTED;
+
+		/**
+		 * Propagated when a connection is bound to a channelOperation and ready for
+		 * user interaction
+		 */
+		State CONFIGURED = ReactorNetty.CONFIGURED;
+
+		/**
+		 * Propagated when a connection has been reused / acquired
+		 * (keep-alive or pooling)
+		 */
+		State ACQUIRED = ReactorNetty.ACQUIRED;
+
+		/**
+		 * Propagated when a connection has been released but not fully closed
+		 * (keep-alive or pooling)
+		 */
+		State RELEASED = ReactorNetty.RELEASED;
+
+		/**
+		 * Propagated when a connection is being fully closed
+		 */
+		State DISCONNECTING = ReactorNetty.DISCONNECTING;
+	}
+}
+```
+
+我们进入其中的一个实现类HttpServerHandle，其状态监听方法onStateChange如下：
+```
+@Override
+	@SuppressWarnings("FutureReturnValueIgnored")
+	public void onStateChange(Connection connection, State newState) {
+		if (newState == HttpServerState.REQUEST_RECEIVED) {
+			try {
+				if (log.isDebugEnabled()) {
+					log.debug(format(connection.channel(), "Handler is being applied: {}"), handler);
+				}
+				HttpServerOperations ops = (HttpServerOperations) connection;
+				Mono.fromDirect(handler.apply(ops, ops))
+				    .subscribe(ops.disposeSubscriber());
+			}
+			catch (Throwable t) {
+				log.error(format(connection.channel(), ""), t);
+				//"FutureReturnValueIgnored" this is deliberate
+				connection.channel()
+				          .close();
+			}
+		}
+	}
+```
+这里处理REQUEST_RECEIVED（已收到请求）状态。这里最核心的就是这行代码“Mono.fromDirect(handler.apply(ops, ops)).subscribe(ops.disposeSubscriber());”，这里是交给handler处理。
+
+然后这里我们调试一下，可以看到HttpServerOperations这个对象是包含request和response的复合对象：
+
+![HttpServerOperations](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-24-spring_source_code_reading_22/HttpServerOperations.png)
+
+这和SpringMVC+tomcat由底层web容器tomcat创建request和response对象是很像的。然后需要注意的是这里request和response对象就不是Servlet标准的。
+
+这里的handler是ReactorHttpHandlerAdapter，我们继续来到这个类型。ReactorHttpHandlerAdapter的apply方法如下：
+```java
+@Override
+	public Mono<Void> apply(HttpServerRequest reactorRequest, HttpServerResponse reactorResponse) {
+		NettyDataBufferFactory bufferFactory = new NettyDataBufferFactory(reactorResponse.alloc());
+		try {
+			ReactorServerHttpRequest request = new ReactorServerHttpRequest(reactorRequest, bufferFactory);
+			ServerHttpResponse response = new ReactorServerHttpResponse(reactorResponse, bufferFactory);
+
+			if (request.getMethod() == HttpMethod.HEAD) {
+				response = new HttpHeadResponseDecorator(response);
+			}
+
+			return this.httpHandler.handle(request, response)
+					.doOnError(ex -> logger.trace(request.getLogPrefix() + "Failed to complete: " + ex.getMessage()))
+					.doOnSuccess(aVoid -> logger.trace(request.getLogPrefix() + "Handling completed"));
+		}
+	}
+```
+
+这里还是主要将请求转派给HttpHandler处理。这里的handler是ReactiveWebServerApplicationContext$ServerManager这个内部类。
+```java
+static final class ServerManager implements HttpHandler {
+
+    private final WebServer server;
+
+    private final boolean lazyInit;
+
+    private volatile HttpHandler handler;
+
+    private ServerManager(ReactiveWebServerFactory factory, boolean lazyInit) {
+        this.handler = this::handleUninitialized;
+        this.server = factory.getWebServer(this);
+        this.lazyInit = lazyInit;
+    }
+
+    private Mono<Void> handleUninitialized(ServerHttpRequest request, ServerHttpResponse response) {
+        throw new IllegalStateException("The HttpHandler has not yet been initialized");
+    }
+
+    @Override
+    public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
+        return this.handler.handle(request, response);
+    }
+    //......
+}
+```
+
+分析其源码，请求也是转派给内部的handler对象。而这个内部的handler对象是类型是HttpWebHandlerAdapter，我们进入这个类型,其handle方法如下：
+```java
+@Override
+	public Mono<Void> handle(ServerHttpRequest request, ServerHttpResponse response) {
+		if (this.forwardedHeaderTransformer != null) {
+			try {
+				request = this.forwardedHeaderTransformer.apply(request);
+			}
+			catch (Throwable ex) {
+				if (logger.isDebugEnabled()) {
+					logger.debug("Failed to apply forwarded headers to " + formatRequest(request), ex);
+				}
+				response.setStatusCode(HttpStatus.BAD_REQUEST);
+				return response.setComplete();
+			}
+		}
+		ServerWebExchange exchange = createExchange(request, response);
+
+		LogFormatUtils.traceDebug(logger, traceOn ->
+				exchange.getLogPrefix() + formatRequest(exchange.getRequest()) +
+						(traceOn ? ", headers=" + formatHeaders(exchange.getRequest().getHeaders()) : ""));
+
+		return getDelegate().handle(exchange)
+				.doOnSuccess(aVoid -> logResponse(exchange))
+				.onErrorResume(ex -> handleUnresolvedError(exchange, ex))
+				.then(Mono.defer(response::setComplete));
+	}
+```
+
+可以看到这里首先是创建ServerWebExchange对象，然后还是转发给内部的handler去处理，这里的handler是WebHandler类型。并且提交handler处理后也注册了doOnSuccess、onErrorResume等回调。
+
+HttpWebHandlerAdapter的父类型WebHandlerDecorator是WebHandler类型delege的修饰对象，因此我们需要继续进入目标对象delegate。
+```java
+public class WebHandlerDecorator implements WebHandler {
+
+	private final WebHandler delegate;
+
+
+	/**
+	 * Create a {@code WebHandlerDecorator} for the given delegate.
+	 * @param delegate the WebHandler delegate
+	 */
+	public WebHandlerDecorator(WebHandler delegate) {
+		Assert.notNull(delegate, "'delegate' must not be null");
+		this.delegate = delegate;
+	}
+
+
+	/**
+	 * Return the wrapped delegate.
+	 */
+	public WebHandler getDelegate() {
+		return this.delegate;
+	}
+
+
+	@Override
+	public Mono<Void> handle(ServerWebExchange exchange) {
+		return this.delegate.handle(exchange);
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + " [delegate=" + this.delegate + "]";
+	}
+
+}
+```
+
+delegate对象是类型是ExceptionHandlingWebHandler，其内部包含一组异常处理器WebExceptionHandler。其handle方法如下：
+```java
+@Override
+	public Mono<Void> handle(ServerWebExchange exchange) {
+		Mono<Void> completion;
+		try {
+			completion = super.handle(exchange);
+		}
+		catch (Throwable ex) {
+			completion = Mono.error(ex);
+		}
+
+		for (WebExceptionHandler handler : this.exceptionHandlers) {
+			completion = completion.onErrorResume(ex -> handler.handle(exchange, ex));
+		}
+		return completion;
+	}
+```
+可以看到这里主要是在正常请求处理之后进行异常处理器的统一处理。
+
+ExceptionHandlingWebHandler其内部也包含一个委派类，其委派类delegate是FilteringWebHandler 。
+
+FilteringWebHandler继承WebHandlerDecorator，那内部也应该持有一个目标类型的委派类，然后看名字应该持有一个过滤器链表。
+
+FilteringWebHandler源码如下，其内部的handle方法是通过过滤器链来链式调用过滤器的handle方法层层过滤的。
+```java
+public class FilteringWebHandler extends WebHandlerDecorator {
+
+	private final DefaultWebFilterChain chain;
+
+
+	/**
+	 * Constructor.
+	 * @param filters the chain of filters
+	 */
+	public FilteringWebHandler(WebHandler handler, List<WebFilter> filters) {
+		super(handler);
+		this.chain = new DefaultWebFilterChain(handler, filters);
+	}
+
+
+	/**
+	 * Return a read-only list of the configured filters.
+	 */
+	public List<WebFilter> getFilters() {
+		return this.chain.getFilters();
+	}
+
+
+	@Override
+	public Mono<Void> handle(ServerWebExchange exchange) {
+		return this.chain.filter(exchange);
+	}
+
+}
+```
+
+过滤器链的源码如下：
+```java
+public class DefaultWebFilterChain implements WebFilterChain {
+
+	private final List<WebFilter> allFilters;
+
+	private final WebHandler handler;
+
+	@Nullable
+	private final WebFilter currentFilter;
+
+	@Nullable
+	private final DefaultWebFilterChain chain;
+
+
+	/**
+	 * Public constructor with the list of filters and the target handler to use.
+	 * @param handler the target handler
+	 * @param filters the filters ahead of the handler
+	 * @since 5.1
+	 */
+	public DefaultWebFilterChain(WebHandler handler, List<WebFilter> filters) {
+		Assert.notNull(handler, "WebHandler is required");
+		this.allFilters = Collections.unmodifiableList(filters);
+		this.handler = handler;
+		DefaultWebFilterChain chain = initChain(filters, handler);
+		this.currentFilter = chain.currentFilter;
+		this.chain = chain.chain;
+	}
+
+	private static DefaultWebFilterChain initChain(List<WebFilter> filters, WebHandler handler) {
+		DefaultWebFilterChain chain = new DefaultWebFilterChain(filters, handler, null, null);
+		ListIterator<? extends WebFilter> iterator = filters.listIterator(filters.size());
+		while (iterator.hasPrevious()) {
+			chain = new DefaultWebFilterChain(filters, handler, iterator.previous(), chain);
+		}
+		return chain;
+	}
+
+	/**
+	 * Private constructor to represent one link in the chain.
+	 */
+	private DefaultWebFilterChain(List<WebFilter> allFilters, WebHandler handler,
+			@Nullable WebFilter currentFilter, @Nullable DefaultWebFilterChain chain) {
+
+		this.allFilters = allFilters;
+		this.currentFilter = currentFilter;
+		this.handler = handler;
+		this.chain = chain;
+	}
+
+	/**
+	 * Public constructor with the list of filters and the target handler to use.
+	 * @param handler the target handler
+	 * @param filters the filters ahead of the handler
+	 * @deprecated as of 5.1 this constructor is deprecated in favor of
+	 * {@link #DefaultWebFilterChain(WebHandler, List)}.
+	 */
+	@Deprecated
+	public DefaultWebFilterChain(WebHandler handler, WebFilter... filters) {
+		this(handler, Arrays.asList(filters));
+	}
+
+
+	public List<WebFilter> getFilters() {
+		return this.allFilters;
+	}
+
+	public WebHandler getHandler() {
+		return this.handler;
+	}
+
+
+	@Override
+	public Mono<Void> filter(ServerWebExchange exchange) {
+		return Mono.defer(() ->
+				this.currentFilter != null && this.chain != null ?
+						invokeFilter(this.currentFilter, this.chain, exchange) :
+						this.handler.handle(exchange));
+	}
+
+	private Mono<Void> invokeFilter(WebFilter current, DefaultWebFilterChain chain, ServerWebExchange exchange) {
+		String currentName = current.getClass().getName();
+		return current.filter(exchange, chain).checkpoint(currentName + " [DefaultWebFilterChain]");
+	}
+
+}
+
+```
+经过过滤器链调用，最终调用的handler是DispatcherHandler。
+
+![DefaultWebFilterChain](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-24-spring_source_code_reading_22/DefaultWebFilterChain.png)
+
+
+到这里，我们分析源码流程了解到了NettySever经过层层转发，最终将请求转派到了DispatcherHandler处理。而DispatcherHandler是webflux内的类，上面分析的流程涉及的类主要是Reactor和netty的。这样到这，底层的nettySever作为Web容器就和DispatcherHandler连接到一起了。
+
+Tomcat Web容器经过层层请求转发最终请求到DispatcherServlet，Reactor和NettyServer的Web容器经过层层请求转发最终请求到DispatcherHandler。流程还是有很多相似之处的。
+
+
+# 三、DispatcherHandler
+
+
+# 四、总结
+
+# 五、参考材料
 
 1. spring-cloud-gateway源码(版本2.2.9)
