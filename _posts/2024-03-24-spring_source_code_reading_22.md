@@ -127,7 +127,9 @@ author: zouhuanli
 通过上面的源码分析，我们知道了请求会转发给listener监听器去处理。我们继续深入。
 
 
-# 二、ConnectionObserver连接监听器
+# 二、ReactiveServerHandler-响应式服务器处理器
+
+## 2.1 ConnectionObserver-连接监听器
 
 监听器主要是监听检测了连接的状态并进行相应的回调。
 ```java
@@ -253,7 +255,9 @@ public interface ConnectionObserver {
 
 这和SpringMVC+tomcat由底层web容器tomcat创建request和response对象是很像的。然后需要注意的是这里request和response对象就不是Servlet标准的。
 
-这里的handler是ReactorHttpHandlerAdapter，我们继续来到这个类型。ReactorHttpHandlerAdapter的apply方法如下：
+## 2.2 HttpHandler-Http处理器
+
+上面的handler是ReactorHttpHandlerAdapter，我们继续来到这个类型。ReactorHttpHandlerAdapter的apply方法如下：
 ```java
 @Override
 	public Mono<Void> apply(HttpServerRequest reactorRequest, HttpServerResponse reactorResponse) {
@@ -332,7 +336,7 @@ static final class ServerManager implements HttpHandler {
 
 可以看到这里首先是创建ServerWebExchange对象，然后还是转发给内部的handler去处理，这里的handler是WebHandler类型。并且提交handler处理后也注册了doOnSuccess、onErrorResume等回调。
 
-HttpWebHandlerAdapter的父类型WebHandlerDecorator是WebHandler类型delege的修饰对象，因此我们需要继续进入目标对象delegate。
+HttpWebHandlerAdapter的父类型WebHandlerDecorator是WebHandler类型delegate的修饰对象，因此我们需要继续进入目标对象delegate。
 ```java
 public class WebHandlerDecorator implements WebHandler {
 
@@ -369,6 +373,8 @@ public class WebHandlerDecorator implements WebHandler {
 
 }
 ```
+
+## 2.3 WebHandler-Web处理器
 
 delegate对象是类型是ExceptionHandlingWebHandler，其内部包含一组异常处理器WebExceptionHandler。其handle方法如下：
 ```java
@@ -526,10 +532,303 @@ public class DefaultWebFilterChain implements WebFilterChain {
 Tomcat Web容器经过层层请求转发最终请求到DispatcherServlet，Reactor和NettyServer的Web容器经过层层请求转发最终请求到DispatcherHandler。流程还是有很多相似之处的。
 
 
-# 三、DispatcherHandler
+# 三、DispatcherHandler分派处理器
 
+DispatcherHandler类似于DispatcherServlet，核心是请求分派，分派给具体的Handler处理。所以推断首先应该也要做路由映射，类似于HandlerMapping的功能。
+
+首先看下DispatcherHandler的核心属性
+```java
+
+	@Nullable
+	private List<HandlerMapping> handlerMappings;
+
+	@Nullable
+	private List<HandlerAdapter> handlerAdapters;
+
+	@Nullable
+	private List<HandlerResultHandler> resultHandlers;
+```
+
+这三者分别是映射器，适配器，结果处理器。这三个组件是在策略集初始化方法内部创建的：
+```java
+protected void initStrategies(ApplicationContext context) {
+		Map<String, HandlerMapping> mappingBeans = BeanFactoryUtils.beansOfTypeIncludingAncestors(
+				context, HandlerMapping.class, true, false);
+
+		ArrayList<HandlerMapping> mappings = new ArrayList<>(mappingBeans.values());
+		AnnotationAwareOrderComparator.sort(mappings);
+		this.handlerMappings = Collections.unmodifiableList(mappings);
+
+		Map<String, HandlerAdapter> adapterBeans = BeanFactoryUtils.beansOfTypeIncludingAncestors(
+				context, HandlerAdapter.class, true, false);
+
+		this.handlerAdapters = new ArrayList<>(adapterBeans.values());
+		AnnotationAwareOrderComparator.sort(this.handlerAdapters);
+
+		Map<String, HandlerResultHandler> beans = BeanFactoryUtils.beansOfTypeIncludingAncestors(
+				context, HandlerResultHandler.class, true, false);
+
+		this.resultHandlers = new ArrayList<>(beans.values());
+		AnnotationAwareOrderComparator.sort(this.resultHandlers);
+	}
+```
+里面创建的是按Type从BeanFactory获取或者创建对应的Bean。
+
+这里的HandlerMapping就有我们非常熟悉的RequestMappingHandlerMapping：
+
+![handlerMappings](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-24-spring_source_code_reading_22/handlerMappings.png)
+
+
+接着我们再进入handle方法：
+```java
+	@Override
+	public Mono<Void> handle(ServerWebExchange exchange) {
+		if (this.handlerMappings == null) {
+			return createNotFoundError();
+		}
+		return Flux.fromIterable(this.handlerMappings)
+				.concatMap(mapping -> mapping.getHandler(exchange))
+				.next()
+				.switchIfEmpty(createNotFoundError())
+				.flatMap(handler -> invokeHandler(exchange, handler))
+				.flatMap(result -> handleResult(exchange, result));
+	}
+```
+
+可以看到这里主要是三步：
+
+1. 通过handlerMapping获取Handler/Controller。
+
+2. 通过适配器实际调用Handler，获得调用结果。
+
+3. 结果交给结果处理器作处理。
+
+## 3.1 HandlerMapping
+
+我们继续阅读一下HandlerMapping如何获取Handler的源码：
+```java
+@Override
+	public Mono<Object> getHandler(ServerWebExchange exchange) {
+		return getHandlerInternal(exchange).map(handler -> {
+			if (logger.isDebugEnabled()) {
+				logger.debug(exchange.getLogPrefix() + "Mapped to " + handler);
+			}
+			ServerHttpRequest request = exchange.getRequest();
+			if (hasCorsConfigurationSource(handler) || CorsUtils.isPreFlightRequest(request)) {
+				CorsConfiguration config = (this.corsConfigurationSource != null ? this.corsConfigurationSource.getCorsConfiguration(exchange) : null);
+				CorsConfiguration handlerConfig = getCorsConfiguration(handler, exchange);
+				config = (config != null ? config.combine(handlerConfig) : handlerConfig);
+				if (!this.corsProcessor.process(config, exchange) || CorsUtils.isPreFlightRequest(request)) {
+					return REQUEST_HANDLED_HANDLER;
+				}
+			}
+			return handler;
+		});
+	}
+```
+继续进入getHandlerInternal：
+```java
+
+	// Handler method lookup
+
+	/**
+	 * Look up a handler method for the given request.
+	 * @param exchange the current exchange
+	 */
+	@Override
+	public Mono<HandlerMethod> getHandlerInternal(ServerWebExchange exchange) {
+		this.mappingRegistry.acquireReadLock();
+		try {
+			HandlerMethod handlerMethod;
+			try {
+				handlerMethod = lookupHandlerMethod(exchange);
+			}
+			catch (Exception ex) {
+				return Mono.error(ex);
+			}
+			if (handlerMethod != null) {
+				handlerMethod = handlerMethod.createWithResolvedBean();
+			}
+			return Mono.justOrEmpty(handlerMethod);
+		}
+		finally {
+			this.mappingRegistry.releaseReadLock();
+		}
+	}
+
+
+```
+这里就是寻找和匹配具体的handlerMethod，比如我们使用@RequestMapping注解的方法。
+```java
+/**
+	 * Look up the best-matching handler method for the current request.
+	 * If multiple matches are found, the best match is selected.
+	 * @param exchange the current exchange
+	 * @return the best-matching handler method, or {@code null} if no match
+	 * @see #handleMatch
+	 * @see #handleNoMatch
+	 */
+	@Nullable
+	protected HandlerMethod lookupHandlerMethod(ServerWebExchange exchange) throws Exception {
+		List<Match> matches = new ArrayList<>();
+		addMatchingMappings(this.mappingRegistry.getMappings().keySet(), matches, exchange);
+
+		if (!matches.isEmpty()) {
+			Comparator<Match> comparator = new MatchComparator(getMappingComparator(exchange));
+			matches.sort(comparator);
+			Match bestMatch = matches.get(0);
+			if (matches.size() > 1) {
+				if (logger.isTraceEnabled()) {
+					logger.trace(exchange.getLogPrefix() + matches.size() + " matching mappings: " + matches);
+				}
+				if (CorsUtils.isPreFlightRequest(exchange.getRequest())) {
+					return PREFLIGHT_AMBIGUOUS_MATCH;
+				}
+				Match secondBestMatch = matches.get(1);
+				if (comparator.compare(bestMatch, secondBestMatch) == 0) {
+					Method m1 = bestMatch.handlerMethod.getMethod();
+					Method m2 = secondBestMatch.handlerMethod.getMethod();
+					RequestPath path = exchange.getRequest().getPath();
+					throw new IllegalStateException(
+							"Ambiguous handler methods mapped for '" + path + "': {" + m1 + ", " + m2 + "}");
+				}
+			}
+			handleMatch(bestMatch.mapping, bestMatch.handlerMethod, exchange);
+			return bestMatch.handlerMethod;
+		}
+		else {
+			return handleNoMatch(this.mappingRegistry.getMappings().keySet(), exchange);
+		}
+	}
+```
+
+可以看到，可能存在多个匹配的方法，这里会返回最合适的。
+
+下面继续进入HandlerAdapter的流程。
+
+## 3.2 HandlerAdapter
+
+这里适配器调用Handler就是真正去调用Handler/Controller的方法。
+```java
+
+	@Override
+	public Mono<HandlerResult> handle(ServerWebExchange exchange, Object handler) {
+		HandlerMethod handlerMethod = (HandlerMethod) handler;
+		Assert.state(this.methodResolver != null && this.modelInitializer != null, "Not initialized");
+
+		InitBinderBindingContext bindingContext = new InitBinderBindingContext(
+				getWebBindingInitializer(), this.methodResolver.getInitBinderMethods(handlerMethod));
+
+		InvocableHandlerMethod invocableMethod = this.methodResolver.getRequestMappingMethod(handlerMethod);
+
+		Function<Throwable, Mono<HandlerResult>> exceptionHandler =
+				ex -> handleException(ex, handlerMethod, bindingContext, exchange);
+
+		return this.modelInitializer
+				.initModel(handlerMethod, bindingContext, exchange)
+				.then(Mono.defer(() -> invocableMethod.invoke(exchange, bindingContext)))
+				.doOnNext(result -> result.setExceptionHandler(exceptionHandler))
+				.doOnNext(result -> bindingContext.saveModel())
+				.onErrorResume(exceptionHandler);
+	}
+```
+InvocableHandlerMethod的handle方法基本和MVC的一致：
+```java
+	public Mono<HandlerResult> invoke(
+			ServerWebExchange exchange, BindingContext bindingContext, Object... providedArgs) {
+
+		return getMethodArgumentValues(exchange, bindingContext, providedArgs).flatMap(args -> {
+			Object value;
+			try {
+				ReflectionUtils.makeAccessible(getBridgedMethod());
+				Method method = getBridgedMethod();
+				if (KotlinDetector.isKotlinReflectPresent() &&
+						KotlinDetector.isKotlinType(method.getDeclaringClass()) &&
+						CoroutinesUtils.isSuspendingFunction(method)) {
+					value = CoroutinesUtils.invokeSuspendingFunction(method, getBean(), args);
+				}
+				else {
+					value = method.invoke(getBean(), args);
+				}
+			}
+			catch (IllegalArgumentException ex) {
+				assertTargetBean(getBridgedMethod(), getBean(), args);
+				String text = (ex.getMessage() != null ? ex.getMessage() : "Illegal argument");
+				return Mono.error(new IllegalStateException(formatInvokeError(text, args), ex));
+			}
+			catch (InvocationTargetException ex) {
+				return Mono.error(ex.getTargetException());
+			}
+			catch (Throwable ex) {
+				// Unlikely to ever get here, but it must be handled...
+				return Mono.error(new IllegalStateException(formatInvokeError("Invocation failure", args), ex));
+			}
+
+			HttpStatus status = getResponseStatus();
+			if (status != null) {
+				exchange.getResponse().setStatusCode(status);
+			}
+
+			MethodParameter returnType = getReturnType();
+			ReactiveAdapter adapter = this.reactiveAdapterRegistry.getAdapter(returnType.getParameterType());
+			boolean asyncVoid = isAsyncVoidReturnType(returnType, adapter);
+			if ((value == null || asyncVoid) && isResponseHandled(args, exchange)) {
+				return (asyncVoid ? Mono.from(adapter.toPublisher(value)) : Mono.empty());
+			}
+
+			HandlerResult result = new HandlerResult(this, value, returnType, bindingContext);
+			return Mono.just(result);
+		});
+	}
+
+```
+
+通过具体Handler的调用，我们得到调用结果result。下面来到结果处理器。
+
+
+## 3.3 HandlerResultHandler
+
+结果处理器也是匹配具体的结果处理器去处理result：
+```java
+	private Mono<Void> handleResult(ServerWebExchange exchange, HandlerResult result) {
+		return getResultHandler(result).handleResult(exchange, result)
+				.checkpoint("Handler " + result.getHandler() + " [DispatcherHandler]")
+				.onErrorResume(ex ->
+						result.applyExceptionHandler(ex).flatMap(exResult -> {
+							String text = "Exception handler " + exResult.getHandler() +
+									", error=\"" + ex.getMessage() + "\" [DispatcherHandler]";
+							return getResultHandler(exResult).handleResult(exchange, exResult).checkpoint(text);
+						}));
+	}
+
+```
+如ResponseBodyResultHandler的处理：
+```java
+	@Override
+	public Mono<Void> handleResult(ServerWebExchange exchange, HandlerResult result) {
+		Object body = result.getReturnValue();
+		MethodParameter bodyTypeParameter = result.getReturnTypeSource();
+		return writeBody(body, bodyTypeParameter, exchange);
+	}
+```
+
+到这里，handler处理完成请求的结果就写回response，整个请求流程就处理完成了。
 
 # 四、总结
+
+这里简单总结一下本文的内容。
+
+1. 首先NettyWebServer创建时候的ChannelHandler，会加入BootstrapInitializerHandler在pipeline的尾部，并添加请求监听器ConnectionObserver。
+
+2. ConnectionObserver收到请求时会首先交给HttpHandler处理，按照ReactorHttpHandlerAdapter,ReactiveWebServerApplicationContext$ServerManager,HttpWebHandlerAdapter转派请求。
+
+3. 请求转派到WebHandler，分别经过ExceptionHandlingWebHandler,FilteringWebHandler,DefaultWebFilterChain,DispatcherHandler等处理，经过过滤器链调用最终请求DispatcherHandler。
+
+4. DispatcherHandler是实际调用具体的handler/controller的核心分派类，内部先由handlerMapping获得具体的handler/controller，再由HandlerAdapter实际调用目标类型和目标方法得到结果，最后交由HandlerResultHandler出来调用结果。
+ 
+整体流程如下图：
+
+
 
 # 五、参考材料
 
