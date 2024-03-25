@@ -824,7 +824,7 @@ InvocableHandlerMethod的handle方法基本和MVC的一致：
 
 3. 请求转派到WebHandler，分别经过ExceptionHandlingWebHandler,FilteringWebHandler,DefaultWebFilterChain,DispatcherHandler等处理，经过过滤器链调用最终请求DispatcherHandler。
 
-4. DispatcherHandler是实际调用具体的handler/controller的核心分派类，内部先由handlerMapping获得具体的handler/controller，再由HandlerAdapter实际调用目标类型和目标方法得到结果，最后交由HandlerResultHandler出来调用结果。
+4. DispatcherHandler是实际调用具体的handler/controller的核心分派类，内部先由handlerMapping获得具体的handler/controller，再由HandlerAdapter实际调用目标类型和目标方法得到结果，最后交由HandlerResultHandler处理调用结果。
  
 整体流程如下图：
 
