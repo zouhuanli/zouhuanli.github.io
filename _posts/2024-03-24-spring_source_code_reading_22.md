@@ -828,6 +828,8 @@ InvocableHandlerMethod的handle方法基本和MVC的一致：
  
 整体流程如下图：
 
+![gateway-0](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-03-24-spring_source_code_reading_22/gateway-0.png)
+
 
 
 # 五、参考材料
