@@ -703,6 +703,8 @@ Netty是一个高性能、可伸缩、上层易用的Java网络通信框架，�
 
 使用Netty改写上面的Client和Server的案例如下。
 
+## 3.1 Server侧源码
+
 Server源码：
 ```java
 /**
@@ -778,6 +780,8 @@ public class TimeServerHandler extends ChannelInboundHandlerAdapter {
 ```
 handler主要是实现Channel事件的回调。
 
+## 3.2 Client侧源码
+
 Client侧源码如下：
 ```java
 /**
@@ -850,6 +854,7 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
 
 # 四、Netty核心架构
 
+## 4.1 组件架构
 首先看下官网的系统组件图：
 ![components](https://raw.githubusercontent.com/zouhuanli/zouhuanli.github.io/master/images/2024-01-28-netty_source_code_reading_1/components.png)
 
@@ -857,6 +862,8 @@ public class TimeClientHandler extends ChannelInboundHandlerAdapter {
 1. Core 核心层：事件模型、通用网络API、ByteBuf等。
 2. Transport 传输层：TCP、UDP、Socket等网络传输能力的抽象和封装。
 3. Protocol 协议层：主要是Http、Websocket、Protobuf等协议的官方实现。
+
+## 4.2 逻辑架构
 
 上图的组件结构重点在于组件功能，划分的结构缺少了组件之间的交互和关联。笔者更喜欢划分成这样的三层架构(图片来源：阿里云开发者公众号)：
 
@@ -883,6 +890,11 @@ Server侧的NioEventLoop实现了reactor模式，其boss线程负责accept客户
 
 主要是要区分Server的bossEventLoop和workerEventLoop的执行流程。
 
+## 5.1 Server启动和引导过程源码简单解读
+
+## 5.2 bossEventLoop执行过程源码简单解读
+
+## 5.3 workerEventLoop执行流程源码简单解读
 
 TODO 2024-04-10
 
