@@ -39,7 +39,7 @@ NIO的同步非阻塞读，或者说多路复用IO，使用复用器器selector�
 
 一般认为，BIO是最简单，并发性能最差的IO类型。只适合很简单，性能要求不高的网络编程需求。
 
-案例的基本功能是client发生Query命令，server获取当前时间并返回给client。案例仅供学习1，未处理异常和优化结构。
+案例的基本功能是client发生Query命令，server获取当前时间并返回给client。案例仅供学习，未处理异常和优化结构。
 
 BIO的Server源码如下：
 ```java
@@ -153,7 +153,7 @@ public class TimeClient {
 
 ## 1.2 NIO案例
 
-NIO的核心原理是通过Reactor模式的轮询器/复用器Selector不断轮询注册的Channel事件，然后再交给具体线程区处理通道的读/写。具体的通道内容的读/写，这块是阻塞的，不是异步直接获取结果的。
+NIO的核心原理是通过Reactor模式的轮询器/复用器Selector不断轮询注册的Channel事件，然后再交给具体线程去处理通道的读/写。具体的通道内容的读/写，这块是阻塞的，不是异步直接获取结果的。
 
 NIO的底层是封装Epoll，本质是Linux的epoll的事件轮询。
 
@@ -292,7 +292,7 @@ public class NioTimeServerHandler implements Runnable {
 }
 
 ```
-我们先看下Server的代码。上诉源码可能没有处理粘包/半包情况，客户端多次调用可能会有错误。
+我们先看下Server的代码。上面源码可能没有处理粘包/半包情况，客户端多次调用可能会有错误。
 
 Server主要流程是创建ServerChannel，bind端口，配置非阻塞。然后打开Selector，ServerChannel注册到Selector上注册Accept事件。
 
@@ -886,23 +886,184 @@ Server侧的NioEventLoop实现了reactor模式，其boss线程负责accept客户
 
 上面提及了Netty的一些核心类，如：Bootstrap、Channel、ServerBootstrap、EventLoopGroup、EventLoop、ChannelPipeline、ChannelHandler、ChannelHandlerContext等。
 
-本文不会对这些核心类做过多的解读，而是简单介绍一下Server执行引擎是如何串联或者使用这些核心类的。
+本文不会对这些核心类做过多的解读，而是简单介绍一下Server执行引擎(EventLoop)是如何串联或者使用这些核心类的。
 
 主要是要区分Server的bossEventLoop和workerEventLoop的执行流程。
 
 ## 5.1 Server启动和引导过程源码简单解读
 
+首先Server启动的两个EventLoopGroup中，BossGroup是1线程的，主要是使用ServerChannel不断获取客户端连接clientChannel。将clientChannel注册和分配到workerEventLoop(默认2*CPU数量)中，会从workerEventLoopGroup中获得一个注册进去。
+
+然后有workerEventLoop的去处理这个客户端连接channel的IO事件。这是二者最主要的区别。
+
+启动过程中首先需要创建ServerChannel，和注册ServerChannelServerChannel。
+```java
+ final ChannelFuture initAndRegister() {
+        Channel channel = null;
+        try {
+                                //创建ServerChannel
+            channel = channelFactory.newChannel();
+            init(channel);
+        } 
+                                 //注册ServerChannel
+        ChannelFuture regFuture = config().group().register(channel);
+        if (regFuture.cause() != null) {
+            if (channel.isRegistered()) {
+                channel.close();
+            } else {
+                channel.unsafe().closeForcibly();
+            }
+        }
+```
+然后注册Channel到Selector。Selector是eventLoop（一个EventLoop一般一个线程）里面只有一个。
+```java
+protected void doRegister() throws Exception {
+        boolean selected = false;
+        for (;;) {
+            try {
+                                    //注册Channel到Selector。Selector是eventLoop（一个线程）里面只有一个。
+                selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
+                return;
+            } catch (CancelledKeyException e) {
+                if (!selected) {
+                    // Force the Selector to select now as the "canceled" SelectionKey may still be
+                    // cached and not removed because no Select.select(..) operation was called yet.
+                    eventLoop().selectNow();
+                    selected = true;
+                } else {
+                    // We forced a select operation on the selector before but the SelectionKey is still cached
+                    // for whatever reason. JDK bug ?
+                    throw e;
+                }
+            }
+        }
+    }
+```
+最后使用ServerBootstrapAcceptor注册clientChannel到worker的EventLoop中。
+
+具体的执行流程大致如下：
+
 ## 5.2 bossEventLoop执行过程源码简单解读
+
+在BossEventLoop的run方法中，首先不断轮询Epoll事件，获得ACCEPT事件。BossEventLoop再处理ACCEPT事件。
+```java
+int selectNow() throws IOException {
+        return selector.selectNow();
+    }
+```
+
+对ACCEPT事件处理是从这里开始：
+```java
+if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                unsafe.read();
+            }
+```
+
+来到：
+```java
+doReadMessages(List<Object> buf) throws Exception {
+        SocketChannel ch = SocketUtils.accept(javaChannel());
+```
+最终获得客户端连接clientChannel。
+
+然后注册clientChannel到workerEventLoop中。然后回调ServerBootstrapAcceptor的channelRead方法,也就是将clientChannel注册到WorkerGroup的一个EventLoop中.
+```java
+childGroup.register(child).addListener(new ChannelFutureListener();
+```
+
+这样bossEventLoop就处理完一个客户端连接，将其注册和交付给workerEventLoop中的一个EventLoop(循环线程)。
+
+下面简单介绍workerEventLoop的流程：
 
 ## 5.3 workerEventLoop执行流程源码简单解读
 
-TODO 2024-04-10
+在workerEventLoop的run方法中，具体处理clientChannel的READ或者WRITE事件。
+```java
+private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
+        final AbstractNioChannel.NioUnsafe unsafe = ch.unsafe();
+        if (!k.isValid()) {
+            final EventLoop eventLoop;
+            try {
+                eventLoop = ch.eventLoop();
+            } catch (Throwable ignored) {
+                // If the channel implementation throws an exception because there is no event loop, we ignore this
+                // because we are only trying to determine if ch is registered to this event loop and thus has authority
+                // to close ch.
+                return;
+            }
+            // Only close ch if ch is still registered to this EventLoop. ch could have deregistered from the event loop
+            // and thus the SelectionKey could be cancelled as part of the deregistration process, but the channel is
+            // still healthy and should not be closed.
+            // See https://github.com/netty/netty/issues/5125
+            if (eventLoop == this) {
+                // close the channel if the key is not valid anymore
+                unsafe.close(unsafe.voidPromise());
+            }
+            return;
+        }
+
+        try {
+            int readyOps = k.readyOps();
+            // We first need to call finishConnect() before try to trigger a read(...) or write(...) as otherwise
+            // the NIO JDK channel implementation may throw a NotYetConnectedException.
+            if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+                // remove OP_CONNECT as otherwise Selector.select(..) will always return without blocking
+                // See https://github.com/netty/netty/issues/924
+                int ops = k.interestOps();
+                ops &= ~SelectionKey.OP_CONNECT;
+                k.interestOps(ops);
+
+                unsafe.finishConnect();
+            }
+
+            // Process OP_WRITE first as we may be able to write some queued buffers and so free memory.
+            if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                // Call forceFlush which will also take care of clear the OP_WRITE once there is nothing left to write
+               unsafe.forceFlush();
+            }
+
+            // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
+            // to a spin loop
+            if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                unsafe.read();
+            }
+        } catch (CancelledKeyException ignored) {
+            unsafe.close(unsafe.voidPromise());
+        }
+    }
+```
+一个workerEventLoop只有一个Selector，可以处理不同个clientChannel的READ或者WRITE事件。但是一个clientChannel只会被注册和分配到workerEventLoop的一个EventLoop中。
+
+处理具体的READ和WRITE事件时候，会回调ChannelHandler注册的回调方法。通过Pipeline的链式调用,会调用多个ChannelHandler。ChannelHandler就是上层开发者具体开发的业务功能点或者拓展点。
+
 
 # 六、总结
 
+1. Netty是什么？
+
+    Netty是一个高性能的异步事件驱动的网络应用框架，封装和优化Java NIO，极大的简化网络应用开发的难度，方便我们开发CS应用和私有协议。
+
+2. Netty整体架构
+
+ 1） 网络通信层：封装和优化原生Java NIO。提供Bootstrap、Channel、ServerBootstrap等类，负责服务器/客户端启动初始化、服务器连接等功能。这层整体还是优化Java NIO。
+
+ 2） 调度引擎层：提供EventLoopGroup、EventLoop等，负责线程池、事件循环、事件分发等功能。这层是实际Netty线程执行事件循环的层。
+
+ 3）服务编排层:负责组装服务，链式传递服务。提供ChannelPipeline、ChannelHandler、ChannelHandlerContext等。ChannelHandler是上层开发者主要拓展点，主要负责实现Channel事件的回调。这层是上层开发拓展业务的层。
+
+3. Server执行核心流程：
+
+   Boss的EventLoop主要是监听Accept事件,负责ACCEPT事件，不断accept客户端连接，然后注册和交付给workerEventLoop中的一个EventLoop。boss一般是只有一个线程。
+
+   worker的EventLoop不断轮询clientChannel的IO事件,并处理IO事件,处理事件时调用Pipeline的链式的ChannelHandler去做具体的处理。worker一般是多个线程。
+
+   这是MainRector+多SubReactor的模式。
 
 # 七、参考材料
 
+1. 《Netty权威指南》
+
+2. Netty源码(4.1)
 
 
 
